@@ -5,7 +5,7 @@
 # pull request quando sai versao nova. Ultima auditoria limpa: 30/10/2026.
 
 # --- Framework ---
-Django==6.0.9
+Django==6.1.2
 asgiref==3.11.1
 sqlparse==0.6.0
 tzdata==2026.2
