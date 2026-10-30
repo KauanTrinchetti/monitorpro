@@ -1,0 +1,54 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}{{ titulo }} - MonitorPro{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block page_subtitle %}{{ subtitulo }}{% endblock %}
+{% block page_actions %}
+  {% if account.pode_operar %}
+    {% if coleta_em_andamento %}
+      <span class="btn-action btn-disabled">Coletando...</span>
+    {% else %}
+      <form method="POST" action="{% url 'coletar_agora' %}" class="inline-action-form">
+        {% csrf_token %}
+        <input type="hidden" name="operation_token" value="{{ token_coleta }}">
+        <button type="submit" class="btn-action">Coletar agora</button>
+      </form>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block page_content %}
+  {% comment %} O cabecalho de painel repetia o titulo e o subtitulo que ja estao
+     na barra de cima. A tabela entra direto, sob o fio da secao. As colunas
+     passaram a ter o nome do que carregam: os itens vem de
+     montar_lista_faturas, entao sao sempre cliente, vencimento, valor e
+     consumo — nunca "Item" e "Referencia". {% endcomment %}
+  <section class="panel" aria-label="{{ titulo }}">
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="{{ titulo }} (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table estreita">
+        <thead>
+          <tr>
+            <th scope="col">Cliente</th>
+            <th scope="col">Vencimento</th>
+            <th scope="col" class="numerico">Valor</th>
+            <th scope="col" class="numerico">Consumo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in itens %}
+            <tr>
+              <td class="celula-forte">{{ item.cliente }}</td>
+              <td class="mono">{{ item.vencimento }}</td>
+              <td class="numerico">{{ item.valor }}</td>
+              <td class="numerico">{{ item.consumo|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4">Nenhum registro para exibir.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

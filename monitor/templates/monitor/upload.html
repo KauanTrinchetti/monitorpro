@@ -1,0 +1,119 @@
+{% extends "monitor/app_shell.html" %}
+{% load estaticos %}
+
+{% block title %}Enviar faturas - MonitorPro{% endblock %}
+{% block page_title %}Enviar faturas{% endblock %}
+{% block page_subtitle %}Até {{ limite_arquivos }} PDFs por vez, {{ limite_mb }} MB cada{% endblock %}
+
+{% block page_content %}
+
+<section class="panel" aria-labelledby="titulo-envio">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title" id="titulo-envio">Novo envio</h2>
+      <p class="panel-sub">Os arquivos entram numa fila e são processados em segundo plano. Dá para fechar a página; o lote continua.</p>
+    </div>
+  </div>
+
+  {% comment %} Configuracao vai por data-* porque o JS e um arquivo estatico externo:
+     a CSP usa script-src 'self', sem 'unsafe-inline'. {% endcomment %}
+  <form method="POST" enctype="multipart/form-data" id="form-envio"
+        class="pilha"
+        data-campo-id="{{ form.arquivos.id_for_label }}"
+        data-limite-arquivos="{{ limite_arquivos }}"
+        data-limite-mb="{{ limite_mb }}">
+    {% csrf_token %}
+    <input type="hidden" name="operation_token" value="{{ operation_token }}">
+
+    {% if form.arquivos.errors %}
+      <div class="message error" role="alert">{{ form.arquivos.errors.0 }}</div>
+    {% endif %}
+
+    <label class="zona-envio" id="zona-envio" for="{{ form.arquivos.id_for_label }}">
+      <svg class="zona-envio-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.5" aria-hidden="true" focusable="false">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+      </svg>
+      <span class="zona-envio-titulo">Arraste os PDFs aqui ou clique para escolher</span>
+      <span class="zona-envio-dica">
+        Somente PDF. O conteúdo do arquivo é conferido no servidor, então renomear a extensão não funciona.
+      </span>
+      {{ form.arquivos }}
+    </label>
+
+    {% comment %} Lista montada pelo JavaScript antes do envio. aria-live faz o leitor de
+       tela anunciar cada arquivo conforme e adicionado. {% endcomment %}
+    <div class="lista-arquivos" id="previa-arquivos" aria-live="polite"></div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-action" id="botao-enviar" disabled aria-disabled="true">
+        <span id="rotulo-enviar">Selecione ao menos um arquivo</span>
+      </button>
+    </div>
+  </form>
+</section>
+
+
+<section class="panel" aria-labelledby="titulo-lotes">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title" id="titulo-lotes">Envios recentes</h2>
+      <p class="panel-sub">Os últimos 10 lotes enviados pelo painel.</p>
+    </div>
+  </div>
+
+  {% if lotes %}
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-lotes">
+      <table class="metrics-table estreita">
+        <caption class="apenas-leitor">Lotes de faturas enviados, com situação e progresso</caption>
+        <thead>
+          <tr>
+            <th scope="col">Lote</th>
+            <th scope="col">Enviado em</th>
+            <th scope="col">Por</th>
+            <th scope="col" class="numerico">Arquivos</th>
+            <th scope="col">Situação</th>
+            <th scope="col"><span class="apenas-leitor">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lote in lotes %}
+            <tr>
+              <th scope="row" class="mono">#{{ lote.id }}</th>
+              <td class="mono">{{ lote.criado_em|date:"d/m/Y H:i" }}</td>
+              <td>{{ lote.usuario.get_full_name|default:lote.usuario.username|default:"-" }}</td>
+              <td class="numerico">{{ lote.concluidos }}/{{ lote.total_arquivos }}</td>
+              <td>
+                {% if lote.status == 'concluido' %}
+                  <span class="badge badge-green">Concluído</span>
+                {% elif lote.status == 'concluido_com_erros' %}
+                  <span class="badge badge-yellow">Concluído com erros</span>
+                {% elif lote.status == 'processando' %}
+                  <span class="badge badge-blue">Processando</span>
+                {% elif lote.status == 'erro' %}
+                  <span class="badge badge-red">Erro</span>
+                {% else %}
+                  <span class="badge badge-cinza">Na fila</span>
+                {% endif %}
+              </td>
+              <td>
+                <a class="panel-action" href="{% url 'lote_detalhe' lote.id %}">
+                  Detalhes<span class="apenas-leitor"> do lote {{ lote.id }}</span>
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="estado-vazio">Nenhum envio ainda. Os arquivos que você enviar aparecem aqui.</p>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% estatico 'monitor/js/upload.js' %}" defer></script>
+{% endblock %}

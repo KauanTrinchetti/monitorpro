@@ -1,0 +1,73 @@
+# ==========================================================
+# Segredos — NUNCA versionar
+# ==========================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credenciais*.json
+
+# ==========================================================
+# Banco de dados e backups (contem dados de clientes / LGPD)
+# ==========================================================
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+backups/
+*.dump
+*.sql.gz
+
+# ==========================================================
+# Faturas e artefatos de processamento (dados pessoais)
+# ==========================================================
+pdfs_falha/
+pdfs_recebidos/
+tmp/
+media/
+
+# Nenhum PDF ou planilha pertence ao repositorio: fatura de cliente e
+# exportacao do painel sao dado pessoal. Barra o "arrastei a conta para a
+# pasta do projeto" antes que vire commit.
+*.pdf
+*.csv
+*.xls
+*.xlsx
+
+# Material de divulgacao feito a partir do projeto (rascunhos de post etc.)
+divulgacao/
+
+# ==========================================================
+# Python
+# ==========================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ==========================================================
+# Django
+# ==========================================================
+staticfiles/
+*.log
+logs/
+
+# ==========================================================
+# Scripts de estudo fora do caminho de execucao.
+# Nao versionar: trazem enderecos de e-mail reais e campos de
+# senha inline. Historico de git e permanente — o que entra uma
+# vez continua acessivel mesmo depois de removido do arquivo.
+# ==========================================================
+scripts_legado/
+
+# ==========================================================
+# Editores / SO
+# ==========================================================
+.claude/settings.local.json
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

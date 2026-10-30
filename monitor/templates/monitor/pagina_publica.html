@@ -1,0 +1,14 @@
+{% extends "monitor/base.html" %}
+
+{% block title %}{{ titulo }} - MonitorPro{% endblock %}
+
+
+{% block body %}
+  <div class="public-page">
+    <div class="public-card">
+      <h1>{{ titulo }}</h1>
+      <p>{{ subtitulo }}</p>
+      <a href="{% url 'login' %}">Voltar ao acesso</a>
+    </div>
+  </div>
+{% endblock %}

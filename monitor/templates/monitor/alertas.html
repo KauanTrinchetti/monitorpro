@@ -1,0 +1,89 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Alertas - MonitorPro{% endblock %}
+{% block page_title %}Alertas{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}
+  {% if account.pode_operar %}
+    <form method="POST" action="{% url 'enviar_alertas' %}" class="inline-action-form">
+      {% csrf_token %}
+      <input type="hidden" name="operation_token" value="{{ token_alertas }}">
+      {% comment %} O botao diz o que acontece ao ser usado, nao o nome da tela. {% endcomment %}
+      <button type="submit" class="btn-action">Enviar alertas aos contatos</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block page_content %}
+  {% comment %} Esta tela e a lista de excecoes: ela abre pela lista. Os tres
+     cartoes que ficavam aqui contavam o que ja esta logo abaixo — o numero de
+     alertas, de e-mails e de WhatsApp — e um numero grande em mono anunciava
+     como medicao aquilo que e so a contagem das linhas da propria pagina.
+     Viraram uma frase. {% endcomment %}
+  <section class="panel" aria-labelledby="titulo-ativos">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-ativos">Alertas ativos</h2>
+        <p class="panel-sub">
+          {{ total_alertas }} em aberto: vencimentos próximos, aumentos anormais e ocorrências do robô.
+          Os avisos saem para {{ emails|length }} e-mail{{ emails|length|pluralize }} e {{ whatsapps|length }} número{{ whatsapps|length|pluralize }} de WhatsApp.
+        </p>
+      </div>
+    </div>
+    <div class="alert-list">
+      {% for alerta in alertas %}
+        <div class="alert-item">
+          {% comment %} A faixa da margem reforca a prioridade escrita ao lado; ela
+             sozinha nunca carrega a informacao. {% endcomment %}
+          <div class="alert-severity {{ alerta.severidade }}" aria-hidden="true"></div>
+          <div>
+            <div class="alert-title">{{ alerta.titulo }}</div>
+            <p class="alert-desc">{{ alerta.descricao }}</p>
+            <p class="alert-time">
+              {% if alerta.severidade == 'high' %}Crítico{% elif alerta.severidade == 'medium' %}Atenção ({{ alerta.tempo }}){% else %}Normal{% endif %}
+            </p>
+          </div>
+        </div>
+      {% empty %}
+        <p class="estado-vazio">Nenhum alerta em aberto. Nenhuma unidade passou do limite de aumento nem está perto do vencimento.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-contatos">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-contatos">Contatos de disparo</h2>
+        <p class="panel-sub">Para onde os alertas acima são enviados. Cadastrados na empresa e nas unidades consumidoras.</p>
+      </div>
+      {% if account.pode_administrar %}
+        <a href="{% url 'configuracoes' %}" class="panel-action">Editar contatos</a>
+      {% endif %}
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Contatos de disparo (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table estreita">
+        <thead>
+          <tr>
+            <th scope="col">Canal</th>
+            <th scope="col">Destino</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% comment %} Mono no destino: e um identificador que o robo consome
+             literalmente, em que um caractere trocado muda o significado. {% endcomment %}
+          {% for email in emails %}
+            <tr><td>E-mail</td><td class="mono celula-forte">{{ email }}</td></tr>
+          {% endfor %}
+          {% for whatsapp in whatsapps %}
+            <tr><td>WhatsApp</td><td class="mono celula-forte">{{ whatsapp }}</td></tr>
+          {% endfor %}
+          {% if not emails and not whatsapps %}
+            <tr>
+              <td colspan="2">Nenhum contato cadastrado. Enquanto não houver um, os alertas ficam só nesta tela.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

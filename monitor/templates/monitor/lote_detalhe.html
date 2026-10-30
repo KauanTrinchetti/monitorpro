@@ -1,0 +1,87 @@
+{% extends "monitor/app_shell.html" %}
+{% load estaticos %}
+
+{% block title %}Lote #{{ lote.id }} - MonitorPro{% endblock %}
+{% block page_title %}Lote <span class="mono">#{{ lote.id }}</span>{% endblock %}
+{% block page_subtitle %}{{ lote.get_origem_display }}, enviado em <span class="mono">{{ lote.criado_em|date:"d/m/Y H:i" }}</span>{% endblock %}
+
+{% block page_actions %}
+  <a class="btn-secondary" href="{% url 'upload_faturas' %}">Novo envio</a>
+{% endblock %}
+
+{% block page_content %}
+
+{# O JS externo le a URL do endpoint e o estado inicial destes data-*. #}
+<section class="panel" aria-labelledby="titulo-progresso"
+         id="painel-progresso"
+         data-url-progresso="{% url 'lote_progresso' lote.id %}"
+         data-finalizado="{{ lote.finalizado_em|yesno:'true,false' }}">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title" id="titulo-progresso">Progresso</h2>
+      <p class="panel-sub" id="resumo-progresso">
+        <span id="texto-progresso">{{ lote.concluidos }} de {{ lote.total_arquivos }} arquivo{{ lote.total_arquivos|pluralize }}</span>
+      </p>
+    </div>
+    <span class="badge badge-cinza" id="selo-status">{{ lote.get_status_display }}</span>
+  </div>
+
+  <div class="pilha">
+    {% comment %} role="progressbar" com os valores faz o leitor de tela anunciar o
+       andamento; o texto ao lado cobre quem nao usa leitor. {% endcomment %}
+    <div class="barra-progresso"
+         role="progressbar"
+         id="barra"
+         aria-valuenow="{{ lote.percentual }}"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-labelledby="titulo-progresso">
+      <div class="barra-progresso-preenchida" id="barra-preenchida" style="width: {{ lote.percentual }}%"></div>
+    </div>
+    <p class="pequeno fraco" id="dica-atualizacao"></p>
+  </div>
+</section>
+
+
+<section class="panel" aria-labelledby="titulo-arquivos">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title" id="titulo-arquivos">Arquivos</h2>
+      <p class="panel-sub">Situação individual de cada PDF do lote. Quando um é recusado, o motivo aparece na própria linha.</p>
+    </div>
+  </div>
+
+  <div class="lista-arquivos" id="lista-arquivos" aria-live="polite">
+    {% for arquivo in arquivos %}
+      <div class="linha-arquivo" data-estado="{{ arquivo.status }}" data-id="{{ arquivo.id }}">
+        <span class="linha-arquivo-nome">{{ arquivo.nome_original }}</span>
+        {% if arquivo.tamanho_bytes %}
+          <span class="linha-arquivo-meta">{{ arquivo.tamanho_bytes|filesizeformat }}{% if arquivo.paginas %}, {{ arquivo.paginas }}p{% endif %}</span>
+        {% endif %}
+        {% if arquivo.status == 'concluido' %}
+          <span class="badge badge-green">Concluído</span>
+        {% elif arquivo.status == 'processando' %}
+          <span class="badge badge-blue"><span class="girando" aria-hidden="true"></span> Processando</span>
+        {% elif arquivo.status == 'erro' %}
+          <span class="badge badge-red">Erro</span>
+        {% elif arquivo.status == 'recusado' %}
+          <span class="badge badge-yellow">Recusado</span>
+        {% else %}
+          <span class="badge badge-cinza">Na fila</span>
+        {% endif %}
+        {% if arquivo.mensagem %}
+          <span class="linha-arquivo-motivo">{{ arquivo.mensagem }}</span>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="estado-vazio">Nenhum arquivo neste lote.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% estatico 'monitor/js/lote_progresso.js' %}" defer></script>
+{% endblock %}

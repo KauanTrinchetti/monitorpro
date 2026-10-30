@@ -1,0 +1,153 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Financeiro - MonitorPro{% endblock %}
+{% block page_title %}Painel financeiro{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}
+  <div class="inline-actions">
+    <form method="POST" action="{% url 'exportar_pdf' %}" class="inline-action-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-action">Exportar PDF</button>
+    </form>
+    <form method="POST" action="{% url 'exportar_csv' %}" class="inline-action-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary">Exportar CSV</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block page_content %}
+  {% comment %} Tres celulas, nao quatro: "Aumentos anormais" era uma contagem de
+     excecoes, e contagem nao e medicao — nao cabia num registrador ao lado do
+     total em reais. Desceu para a frase abaixo, que e onde ela pode dizer o
+     que significa e levar a quem resolve. {% endcomment %}
+  <section aria-label="Totais do período">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total monitorado</div>
+        <div class="kpi-value">{{ financeiro.total }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Consumo total</div>
+        <div class="kpi-value">{{ financeiro.consumo }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Média por fatura</div>
+        <div class="kpi-value">{{ financeiro.ticket_medio }}</div>
+      </div>
+    </div>
+    <p class="kpi-rodape">
+      {% if financeiro.alertas_consumo %}
+        {% comment %} .variacao.alta e mono em vermelho: um numero que e problema.
+           A cor nao esta sozinha — a frase diz o que aconteceu. {% endcomment %}
+        <span class="variacao alta">{{ financeiro.alertas_consumo }}</span>
+        fatura{{ financeiro.alertas_consumo|pluralize }} pass{{ financeiro.alertas_consumo|pluralize:"ou,aram" }} do limite de aumento cadastrado para a unidade.
+        <a href="{% url 'alertas' %}">Ver quais</a>.
+      {% else %}
+        Nenhuma fatura passou do limite de aumento cadastrado para a unidade.
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-mes">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-mes">Total por mês</h2>
+        <p class="panel-sub">Os últimos meses faturados, do mais recente para o mais antigo.</p>
+      </div>
+    </div>
+    {% if financeiro.por_mes %}
+      {% comment %} Cada lista desta tela tem escala propria: a view calcula a
+         largura contra o maior item do proprio grupo. Dizer qual e esse maior
+         e o que transforma a barra em medida. {% endcomment %}
+      <div class="chart-escala">
+        <span>
+          Topo da escala
+          {% for linha in financeiro.por_mes %}{% if linha.largura >= 100 %}<strong>{{ linha.total }}</strong>{% endif %}{% endfor %}
+        </span>
+        <span>linha de grade a cada 25%</span>
+      </div>
+      <div class="bar-list">
+        {% for linha in financeiro.por_mes %}
+          <div class="bar-row">
+            <div class="bar-label">{{ linha.rotulo }}</div>
+            <div class="bar-track" title="{{ linha.rotulo }}: {{ linha.total }}">
+              <div class="bar-fill" style="width:{{ linha.largura }}%;"></div>
+            </div>
+            <div class="bar-value">{{ linha.total }}</div>
+            <div class="bar-meta">{{ linha.consumo }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="estado-vazio">Nenhuma fatura registrada ainda. O painel se preenche na primeira coleta.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-unidade">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-unidade">Total por unidade</h2>
+        <p class="panel-sub">Instalações com maior custo acumulado no período, da maior para a menor.</p>
+      </div>
+    </div>
+    {% if financeiro.por_unidade %}
+      <div class="chart-escala">
+        <span>
+          Topo da escala
+          {% for linha in financeiro.por_unidade %}{% if linha.largura >= 100 %}<strong>{{ linha.total }}</strong>{% endif %}{% endfor %}
+        </span>
+        <span>linha de grade a cada 25%</span>
+      </div>
+      <div class="bar-list">
+        {% for linha in financeiro.por_unidade %}
+          <div class="bar-row">
+            <div class="bar-label">{{ linha.rotulo }}</div>
+            <div class="bar-track" title="{{ linha.rotulo }}: {{ linha.total }}">
+              <div class="bar-fill" style="width:{{ linha.largura }}%;"></div>
+            </div>
+            <div class="bar-value">{{ linha.total }}</div>
+            <div class="bar-meta">{{ linha.faturas }} fatura{{ linha.faturas|pluralize }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="estado-vazio">Nenhuma unidade com fatura vinculada. Sem a instalação cadastrada, o PDF chega e não encontra dono.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-cliente">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-cliente">Total por cliente</h2>
+        <p class="panel-sub">Quando uma conta reúne mais de uma empresa, é aqui que dá para separar o gasto de cada uma.</p>
+      </div>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Total por cliente (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table estreita">
+        <thead>
+          <tr>
+            <th scope="col">Cliente</th>
+            <th scope="col" class="numerico">Faturas</th>
+            <th scope="col" class="numerico">Total</th>
+            <th scope="col" class="numerico">Consumo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in financeiro.por_cliente %}
+            <tr>
+              <td class="celula-forte">{{ linha.rotulo }}</td>
+              <td class="numerico">{{ linha.faturas }}</td>
+              <td class="numerico">{{ linha.total }}</td>
+              <td class="numerico">{{ linha.consumo }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4">Nenhum cliente com fatura registrada.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

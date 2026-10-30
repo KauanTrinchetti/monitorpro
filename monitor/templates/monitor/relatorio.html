@@ -1,0 +1,227 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Relatório completo - MonitorPro{% endblock %}
+{% block page_title %}Relatório completo{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+
+{% block page_actions %}
+  <div class="inline-actions">
+    <form method="POST" action="{% url 'exportar_pdf' %}" class="inline-action-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-action">Exportar PDF</button>
+    </form>
+    <form method="POST" action="{% url 'exportar_csv' %}" class="inline-action-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary">Exportar CSV</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block page_content %}
+
+  {% comment %} Tres celulas medidas, nao quatro. "Altas e baixas" era uma
+     contagem de direcao — nao e valor lido de medidor e nao cabia no
+     registrador. Desceu para a frase, onde a seta, a palavra e o numero
+     andam juntos e a cor nunca informa sozinha. {% endcomment %}
+  <section aria-label="Totais do período">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Faturas no período</div>
+        <div class="kpi-value">{{ total_faturas|floatformat:"0g" }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Soma total gasta</div>
+        <div class="kpi-value">{{ total_gasto }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Energia consumida</div>
+        <div class="kpi-value">{{ total_consumo|floatformat:"0g" }} <span class="kpi-unidade">kWh</span></div>
+      </div>
+    </div>
+    <p class="kpi-rodape">
+      Comparadas com a fatura anterior da mesma instalação:
+      <span class="variacao alta"><span aria-hidden="true">&uarr;</span>{{ resumo_variacao.total_altas }}</span> subiram,
+      <span class="variacao baixa"><span aria-hidden="true">&darr;</span>{{ resumo_variacao.total_baixas }}</span> caíram
+      e {{ resumo_variacao.total_estaveis }} ficaram estáveis.
+    </p>
+  </section>
+
+
+  {% if resumo_variacao.altas or resumo_variacao.baixas %}
+    <div class="duas-colunas">
+
+      <section class="panel" aria-labelledby="titulo-altas">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title" id="titulo-altas">Maiores altas</h2>
+            <p class="panel-sub">Consumo que mais subiu em relação à fatura anterior</p>
+          </div>
+          {% if resumo_variacao.com_anomalia %}
+            <span class="badge badge-red">{{ resumo_variacao.com_anomalia }} acima do limite</span>
+          {% endif %}
+        </div>
+
+        {% if resumo_variacao.altas %}
+          <ul class="lista-variacao">
+            {% for item in resumo_variacao.altas %}
+              <li class="item-variacao alta">
+                <a href="{% url 'detalhe_fatura' item.id %}" class="item-variacao-link">
+                  <span class="item-variacao-titulo">
+                    {{ item.unidade }}
+                    {% if item.anomalia %}
+                      <span class="badge badge-red">Acima do limite</span>
+                    {% endif %}
+                  </span>
+                  <span class="item-variacao-meta">
+                    {{ item.mes }}, de {{ item.consumo_anterior }} para {{ item.consumo_atual }} kWh, {{ item.valor }}
+                  </span>
+                </a>
+                <span class="item-variacao-numero alta">
+                  <span aria-hidden="true">&uarr;</span> {{ item.variacao }}
+                  <small>{{ item.diferenca_valor }} a mais</small>
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="estado-vazio">Nenhuma alta no período.</p>
+        {% endif %}
+      </section>
+
+      <section class="panel" aria-labelledby="titulo-baixas">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title" id="titulo-baixas">Maiores quedas</h2>
+            <p class="panel-sub">Consumo que mais caiu em relação à fatura anterior</p>
+          </div>
+        </div>
+
+        {% if resumo_variacao.baixas %}
+          <ul class="lista-variacao">
+            {% for item in resumo_variacao.baixas %}
+              <li class="item-variacao baixa">
+                <a href="{% url 'detalhe_fatura' item.id %}" class="item-variacao-link">
+                  <span class="item-variacao-titulo">{{ item.unidade }}</span>
+                  <span class="item-variacao-meta">
+                    {{ item.mes }}, de {{ item.consumo_anterior }} para {{ item.consumo_atual }} kWh, {{ item.valor }}
+                  </span>
+                </a>
+                <span class="item-variacao-numero baixa">
+                  <span aria-hidden="true">&darr;</span> {{ item.variacao }}
+                  <small>{{ item.diferenca_valor }} a menos</small>
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="estado-vazio">Nenhuma queda no período.</p>
+        {% endif %}
+      </section>
+
+    </div>
+  {% endif %}
+
+
+  <section class="panel" aria-labelledby="titulo-faturas">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-faturas">Faturas registradas</h2>
+        <p class="panel-sub">
+          Abra uma fatura para ver leituras, demanda e consumo no gráfico.
+          {% if resumo_variacao.sem_comparacao %}
+            {{ resumo_variacao.sem_comparacao }} sem base de comparação (primeira da instalação).
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-faturas">
+      <table class="metrics-table">
+        <caption class="apenas-leitor">
+          Faturas registradas, com variação de consumo e de valor em relação à fatura anterior da mesma instalação
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Fatura</th>
+            <th scope="col">Unidade</th>
+            <th scope="col">Instalação</th>
+            <th scope="col">Vencimento</th>
+            <th scope="col" class="numerico">Valor</th>
+            <th scope="col" class="numerico">Consumo</th>
+            <th scope="col" class="numerico">Variação do consumo</th>
+            <th scope="col" class="numerico">Variação do valor</th>
+            <th scope="col">Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fat in lista_faturas %}
+            {% with comp=fat.comp %}
+              <tr>
+                <th scope="row" class="mono">
+                  <a href="{% url 'detalhe_fatura' fat.id %}">#{{ fat.id }}</a>
+                </th>
+                <td>
+                  <a href="{% url 'detalhe_fatura' fat.id %}" class="celula-link">{{ fat.unidade }}</a>
+                  <span class="linha-secundaria">{{ fat.cliente }}</span>
+                </td>
+                <td class="mono">{{ fat.instalacao }}</td>
+                <td class="mono">{{ fat.vencimento }}</td>
+                <td class="numerico">{{ fat.valor }}</td>
+                <td class="numerico">{{ fat.consumo }}</td>
+
+                <td class="numerico">
+                  {% if comp.tem_base %}
+                    {% comment %} A seta acompanha a cor: quem nao distingue
+                       as cores continua sabendo se subiu ou desceu. {% endcomment %}
+                    <span class="variacao {{ comp.direcao }}">
+                      {% if comp.direcao == 'alta' %}<span aria-hidden="true">&uarr;</span>
+                      {% elif comp.direcao == 'baixa' %}<span aria-hidden="true">&darr;</span>
+                      {% else %}<span aria-hidden="true">&rarr;</span>{% endif %}
+                      {{ comp.variacao }}
+                    </span>
+                    <span class="linha-secundaria">de {{ comp.consumo_anterior }} kWh</span>
+                  {% else %}
+                    <span class="fraco">—</span>
+                  {% endif %}
+                </td>
+
+                <td class="numerico">
+                  {% if comp.tem_base %}
+                    <span class="variacao {% if comp.variacao_valor_numero > 1 %}alta{% elif comp.variacao_valor_numero < -1 %}baixa{% else %}estavel{% endif %}">
+                      {% if comp.variacao_valor_numero > 1 %}<span aria-hidden="true">&uarr;</span>
+                      {% elif comp.variacao_valor_numero < -1 %}<span aria-hidden="true">&darr;</span>
+                      {% else %}<span aria-hidden="true">&rarr;</span>{% endif %}
+                      {{ comp.variacao_valor }}
+                    </span>
+                    <span class="linha-secundaria">de {{ comp.valor_anterior_formatado }}</span>
+                  {% else %}
+                    <span class="fraco">—</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if not comp.tem_base %}
+                    <span class="badge badge-cinza">Primeira fatura</span>
+                  {% elif comp.anomalia %}
+                    <span class="badge badge-red">Acima do limite {{ comp.limite }}</span>
+                  {% elif comp.direcao == 'alta' %}
+                    <span class="badge badge-yellow">Alta</span>
+                  {% elif comp.direcao == 'baixa' %}
+                    <span class="badge badge-green">Queda</span>
+                  {% else %}
+                    <span class="badge badge-cinza">Estável</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endwith %}
+          {% empty %}
+            <tr>
+              <td colspan="9"><p class="estado-vazio">Nenhuma fatura encontrada.</p></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Visão geral - MonitorPro{% endblock %}
+{% block page_title %}Visão geral{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}
+  <div class="inline-actions">
+    {% if account.pode_operar %}
+      {% if coleta_em_andamento %}
+        <span class="btn-action btn-disabled">Coletando...</span>
+      {% else %}
+        <form method="POST" action="{% url 'coletar_agora' %}">
+          {% csrf_token %}
+          <input type="hidden" name="operation_token" value="{{ token_coleta }}">
+          <button type="submit" class="btn-action">Coletar agora</button>
+        </form>
+      {% endif %}
+    {% endif %}
+    <a href="{% url 'financeiro' %}" class="btn-secondary">Painel financeiro</a>
+  </div>
+{% endblock %}
+
+
+{% block page_content %}
+  {% comment %} A pagina abre pela pergunta que ela existe para responder: o que
+     precisa de atencao. Os totais vem depois, porque sao contexto e nao a
+     pergunta do dia. {% endcomment %}
+  <section class="panel" aria-labelledby="titulo-excecoes">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-excecoes">Fora da curva</h2>
+        <p class="panel-sub">Unidades que passaram do limite de aumento ou estão perto do vencimento.</p>
+      </div>
+      <a href="{% url 'alertas' %}" class="panel-action">Ver todos os alertas</a>
+    </div>
+    <div class="alert-list">
+      {% for alerta in alertas %}
+        <div class="alert-item">
+          {% comment %} A faixa da margem reforca a prioridade escrita ao lado; ela
+             sozinha nunca carrega a informacao. {% endcomment %}
+          <div class="alert-severity {{ alerta.severidade }}" aria-hidden="true"></div>
+          <div>
+            <div class="alert-title">{{ alerta.titulo }}</div>
+            <p class="alert-desc">{{ alerta.descricao }}</p>
+            <p class="alert-time">
+              {% if alerta.severidade == 'high' %}Crítico{% elif alerta.severidade == 'medium' %}Atenção ({{ alerta.tempo }}){% else %}Normal{% endif %}
+            </p>
+          </div>
+        </div>
+      {% empty %}
+        <p class="estado-vazio">Nenhuma unidade fora da curva. Tudo dentro do limite de aumento cadastrado.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% comment %} O registro: celulas continuas, como o registrador de um medidor.
+     Nao sao cartoes e nao competem com a secao acima. {% endcomment %}
+  <section aria-label="Totais do período">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Faturas lidas</div>
+        <div class="kpi-value">{{ total_faturas|default:"0"|floatformat:"0g" }}</div>
+        <div class="status-row"><span class="status-dot" aria-hidden="true"></span>Extraídas dos PDFs recebidos</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Valor monitorado</div>
+        <div class="kpi-value">R$ {{ total_gasto|default:"0,00" }}</div>
+        <div class="status-row"><span class="status-dot" aria-hidden="true"></span>Soma das faturas registradas</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Energia consumida</div>
+        <div class="kpi-value">{{ total_consumo|default:"0"|floatformat:"0g" }} <span class="kpi-unidade">kWh</span></div>
+        <div class="status-row"><span class="status-dot" aria-hidden="true"></span>Consumo somado das leituras</div>
+      </div>
+    </div>
+    {% comment %} O painel antigo dizia "Robo IMAP operando" em verde, sempre, sem
+       consultar nada. Aqui a frase corresponde ao estado real da coleta. {% endcomment %}
+    <p class="kpi-rodape">
+      {% if coleta_em_andamento %}
+        Coleta em andamento. Os números acima ainda podem mudar.
+      {% else %}
+        Nenhuma coleta em andamento.
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-serie">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-serie">Gasto por mês</h2>
+        <p class="panel-sub">Últimas faturas registradas, do mês mais antigo ao mais recente.</p>
+      </div>
+      <a href="{% url 'relatorio_completo' %}" class="panel-action">Ver relatório completo</a>
+    </div>
+
+    {% if grafico_dados %}
+      {% comment %} Regra 4: barra sem eixo e decoracao. O topo da escala e o maior
+         mes, e a grade marca cada quarto dela — da para medir uma barra sem
+         precisar ler o numero em cima. {% endcomment %}
+      <div class="chart-escala">
+        <span>
+          Topo da escala
+          {% for item in grafico_dados %}{% if item.destaque %}<strong>R$ {{ item.valor }}</strong>{% endif %}{% endfor %}
+        </span>
+        <span>linha de grade a cada 25%</span>
+      </div>
+      <div class="chart-wrap">
+        {% for item in grafico_dados %}
+          <div class="chart-col">
+            <div class="chart-value">R$ {{ item.valor }}</div>
+            <div class="chart-bar{% if item.destaque %} destaque{% endif %}"
+                 style="height: {{ item.altura }}%;"
+                 title="{{ item.mes }}: R$ {{ item.valor }}"></div>
+            <div class="chart-label">{{ item.mes }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="estado-vazio">Ainda não há meses fechados para comparar.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-faturas">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-faturas">Faturas registradas</h2>
+        <p class="panel-sub">Abra uma unidade para ver as leituras de medidor daquela fatura.</p>
+      </div>
+      <div class="inline-actions">
+        <form method="POST" action="{% url 'exportar_pdf' %}" class="inline-action-form">
+          {% csrf_token %}
+          <button type="submit" class="panel-action">Exportar PDF</button>
+        </form>
+        <form method="POST" action="{% url 'exportar_csv' %}" class="inline-action-form">
+          {% csrf_token %}
+          <button type="submit" class="panel-action">Exportar CSV</button>
+        </form>
+      </div>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Faturas registradas (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th scope="col">Fatura</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Unidade</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Vencimento</th>
+            <th scope="col" class="numerico">Valor</th>
+            <th scope="col" class="numerico">Consumo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fat in lista_faturas %}
+            {% comment %} O link fica na celula da unidade e chega pelo teclado. O
+               onclick que existia no <tr> era inalcancavel por Tab e, com a CSP
+               restringindo script inline, nem sequer executava. {% endcomment %}
+            <tr class="linha-clicavel">
+              <td class="mono">#{{ fat.id }}</td>
+              <td>{{ fat.cliente }}</td>
+              <td class="celula-forte"><a href="{% url 'detalhe_fatura' fat.id %}">{{ fat.unidade }}</a></td>
+              <td>{{ fat.tipo }}</td>
+              <td class="mono">{{ fat.vencimento }}</td>
+              <td class="numerico">{{ fat.valor }}</td>
+              <td class="numerico">{{ fat.consumo }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7">Nenhuma fatura registrada. Envie um PDF ou aguarde a próxima coleta.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

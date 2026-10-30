@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Dependencias da aplicacao e das ferramentas de verificacao.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  # Versoes das actions usadas na CI.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday

@@ -1,0 +1,74 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Unidades consumidoras - MonitorPro{% endblock %}
+{% block page_title %}Unidades consumidoras{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}{% if account.pode_administrar %}<a href="{% url 'unidade_nova' %}" class="btn-action">Nova unidade</a>{% endif %}{% endblock %}
+
+{% block page_content %}
+  <section class="panel" aria-labelledby="titulo-unidades">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-unidades">Cadastro de unidades</h2>
+        {% comment %} Os dois cartoes que ficavam aqui contavam as linhas da tabela
+           logo abaixo, em mono de 21px, como se fossem medicao. Viraram uma
+           frase: o numero de unidades nao e um valor lido de medidor. {% endcomment %}
+        <p class="panel-sub">
+          {{ total_unidades }} unidade{{ total_unidades|pluralize }} cadastrada{{ total_unidades|pluralize }}, {{ ativas }} ativa{{ ativas|pluralize }}.
+          É o número da instalação que liga a fatura ao cliente. Sem ele cadastrado, o PDF chega e não encontra dono.
+        </p>
+      </div>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Cadastro de unidades (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th scope="col">Unidade</th>
+            <th scope="col">Empresa</th>
+            <th scope="col">Instalação</th>
+            <th scope="col">E-mail da automação</th>
+            <th scope="col">Tipo</th>
+            <th scope="col" class="numerico">Limite de aumento</th>
+            <th scope="col">Último vencimento</th>
+            <th scope="col" class="numerico">Total</th>
+            <th scope="col">Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for unidade in unidades %}
+            {% comment %} O link fica no nome e chega pelo teclado. O onclick que
+               existia no <tr> era inalcancavel por Tab e, com a CSP restringindo
+               script inline, nem sequer executava. {% endcomment %}
+            <tr class="linha-clicavel">
+              <td class="celula-forte"><a href="{% url 'unidade_editar' unidade.id %}">{{ unidade.nome }}</a></td>
+              <td>{{ unidade.empresa }}</td>
+              {% comment %} Mono na instalacao e no e-mail: sao identificadores que o
+                 robo consome literalmente, em que um caractere trocado muda o
+                 significado. Sem cor — a instalacao nao e um link. {% endcomment %}
+              <td class="mono celula-forte">{{ unidade.instalacao }}</td>
+              <td class="mono">{{ unidade.email_automacao }}</td>
+              <td>{{ unidade.tipo }}</td>
+              <td class="numerico">{{ unidade.limite }}</td>
+              <td class="mono">{{ unidade.ultima }}</td>
+              <td class="numerico">{{ unidade.total }}</td>
+              <td>
+                {% comment %} Regra 1: o estado normal nao recebe marca. Unidade
+                   inativa e a excecao — e dela que o robo nao vai ligar fatura
+                   nenhuma —, entao e ela que ganha o sinal. {% endcomment %}
+                {% if unidade.ativa %}
+                  <span class="badge badge-cinza">Ativa</span>
+                {% else %}
+                  <span class="badge badge-yellow">Inativa</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9">Nenhuma unidade cadastrada. Enquanto não houver uma, as faturas que chegarem ficam sem dono.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

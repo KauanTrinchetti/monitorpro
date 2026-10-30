@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Vulnerabilidade nova aparece mesmo sem commit novo: roda toda segunda.
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+# Menor privilegio: cada job pede so o que usa.
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: monitorpro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DEBUG: "True"
+      DB_NAME: monitorpro
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - name: Nenhuma migration esquecida
+        run: python manage.py makemigrations --check --dry-run
+      - name: Testes
+        run: python manage.py test monitor
+
+  configuracao-producao:
+    name: Configuração de produção (check --deploy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - name: check --deploy com DEBUG=False
+        env:
+          DEBUG: "False"
+          ALLOWED_HOSTS: monitorpro.example.com
+          DB_PASSWORD: nao-usada-pelo-check
+        run: |
+          export SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key as g; print(g())')"
+          python manage.py check --deploy --fail-level WARNING
+
+  dependencias:
+    name: Vulnerabilidades nas dependências (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -r requirements-dev.txt
+      - run: pip-audit -r requirements.txt --no-deps --disable-pip
+
+  analise-estatica:
+    name: Análise estática de segurança (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -r requirements-dev.txt
+      - run: bandit -r monitor core robo_leitor_cpfl.py manage.py -x monitor/tests.py -ll -ii
+
+  segredos:
+    name: Segredos no histórico (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

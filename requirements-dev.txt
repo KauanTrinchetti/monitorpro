@@ -1,0 +1,4 @@
+# Ferramentas de verificacao usadas na CI (.github/workflows/ci.yml).
+# Nao fazem parte da aplicacao; ficam aqui para o Dependabot atualizar.
+pip-audit==2.10.1
+bandit==1.9.4

@@ -1,0 +1,37 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}{{ titulo }} - MonitorPro{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block page_subtitle %}{{ subtitulo }}{% endblock %}
+
+{% block page_content %}
+  <form method="POST" class="panel">
+    {% csrf_token %}
+    <input type="hidden" name="operation_token" value="{{ operation_token }}">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Dados da unidade</h2>
+        <p class="panel-sub">
+          O número de instalação é o que liga a fatura a esta unidade: copie exatamente como está impresso no PDF da CPFL.
+          O e-mail da automação é o endereço que recebe o encaminhamento da distribuidora.
+        </p>
+      </div>
+    </div>
+    <div class="form-grid">
+      {% for field in form.visible_fields %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+          {% comment %} O erro tem classe propria em vez de cor inline: assim ele
+             acompanha o token e nao precisa ser caçado se a paleta mudar. {% endcomment %}
+          {% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-action">Salvar unidade</button>
+      <a href="{% url 'unidades' %}" class="btn-secondary">Voltar sem salvar</a>
+    </div>
+  </form>
+{% endblock %}
