@@ -65,7 +65,7 @@ scripts_legado/
 # ==========================================================
 # Editores / SO
 # ==========================================================
-.claude/settings.local.json
+.claude/
 .vscode/
 .idea/
 Thumbs.db
