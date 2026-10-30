@@ -22,7 +22,7 @@ argon2-cffi-bindings==25.1.0
 
 # --- Leitura de PDF ---
 pdfplumber==0.11.9
-pdfminer.six==20251230
+pdfminer.six==20260107
 pypdfium2==5.9.0
 pillow==13.0.0
 
