@@ -1,0 +1,1118 @@
+/* ==========================================================================
+   MonitorPro — design system
+   ==========================================================================
+   Arquivo unico servido como estatico, consumido por todos os templates.
+
+   A METAFORA: papel, tinta e o tambor vermelho do medidor.
+
+   O produto le um documento impresso (a fatura em PDF) e um instrumento de
+   medicao. A interface fica no mesmo registro visual: fundo de papel, texto
+   em tinta, e uma unica cor saturada — o vermelho da ultima casa do
+   registrador — reservada para o que saiu da curva.
+
+   AS CINCO REGRAS. Toda decisao daqui para baixo obedece a estas:
+
+     1. A ausencia de marca e o estado normal. So a excecao recebe tinta.
+     2. Se esta em mono, uma maquina mediu ou extraiu. Rotulo, titulo,
+        navegacao e botao nunca sao mono.
+     3. Raio 0 = dado. Raio 3px = controle. O raio diz o que responde ao toque.
+     4. Todo numero tem escala. Barra sem eixo e decoracao.
+     5. Dado que falta e desenhado como buraco (hachura), nunca como zero.
+
+   Contraste: todos os pares texto/fundo foram medidos pela formula WCAG 2.1
+   contra --papel (#F0F2F1) e --esmalte (#E3E7E5). O valor medido esta anotado
+   ao lado de cada token. Nenhum tom de texto abaixo de 4,5:1 sobreviveu — por
+   isso existem tres tons de texto, nao quatro.
+
+   Organizacao:
+     1. Tokens
+     2. Reset e base
+     3. Acessibilidade
+     4. Layout da aplicacao
+     5. Componentes
+     6. Instrumentos (series, medidor, historico)
+     7. Envio de arquivos
+     8. Telas fora do shell (acesso, pagina publica)
+     9. Utilitarios
+    10. Breakpoints (mobile-first)
+    11. Impressao
+   ========================================================================== */
+
+/* ============================ 1. TOKENS ================================== */
+
+:root {
+  color-scheme: light;
+
+  /* --- Superficies ---
+     Duas, nao cinco. Papel e a folha; esmalte e o corpo do medidor. A
+     profundidade vem de fio e de valor, nunca de sombra. */
+  --papel:   #F0F2F1;
+  --esmalte: #E3E7E5;
+
+  /* --- Tinta (contraste medido contra --papel) --- */
+  --texto-forte: #16201D;  /* 14,84:1 — titulos, numeros, traco */
+  --texto-medio: #2E3936;  /* 10,64:1 — corpo */
+  --texto-suave: #59635F;  /*  5,53:1 — rotulos e secundario */
+  /* Nao existe um quarto tom: o proximo passo de cinza media 4,13:1 e
+     reprova no AA. Onde antes havia --texto-fraco, use --texto-suave. */
+  --texto-fraco: #59635F;
+
+  /* --- A unica cor saturada ---
+     Vermelho do tambor das decimas. So aparece onde ha problema: atraso,
+     alta anormal, erro. Se estiver em qualquer outro lugar, esta errado. */
+  --tarja:       #A32B22;  /* 6,38:1 sobre papel */
+  --tarja-fundo: rgba(163, 43, 34, .07);
+
+  /* --- Fios ---
+     Estruturais, nao decorativos. O fio solido marca a linha de base de um
+     instrumento; o fio sutil separa registros discretos. */
+  --fio:       rgba(22, 32, 29, .14);
+  --fio-forte: rgba(22, 32, 29, .30);
+  --fio-base:  var(--texto-forte);
+
+  /* --- Tipografia ---
+     Archivo: grotesca industrial desenhada para interface densa. Carrega
+     todo o texto — titulo, rotulo, navegacao, botao.
+     IBM Plex Mono: so valor medido ou extraido (R$, kWh, data, instalacao,
+     leitura, id). E a marca de que uma maquina produziu aquele numero. */
+  --fonte-texto: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fonte-mono:  'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Escala tradicional do tipografo (a serie 8/9/10/11/12/14/16/18/21/24
+     documentada em The Elements of Typographic Style), nao uma razao fixa:
+     os degraus sao mais uteis justamente onde a interface e mais densa. */
+  --texto-xs:  0.6875rem;  /* 11px — selo, rotulo miudo */
+  --texto-sm:  0.75rem;    /* 12px — meta, rotulo */
+  --texto-md:  0.8125rem;  /* 13px — tabela */
+  --texto-lg:  0.9375rem;  /* 15px — corpo */
+  --texto-xl:  1.125rem;   /* 18px — titulo de secao */
+  --texto-2xl: 1.3125rem;  /* 21px — numero do registro */
+  --texto-3xl: 1.75rem;    /* 28px — so na tela de acesso */
+
+  --peso-normal: 400;
+  --peso-medio:  500;
+  --peso-forte:  600;
+  --peso-max:    700;
+
+  --altura-apertada: 1.25;
+  --altura-tabela:   1.35;
+  --altura-normal:   1.5;
+
+  /* Prosa nunca passa disto. Numero, tabela e rotulo estao livres. */
+  --medida: 62ch;
+
+  /* --- Espacamento (escala de 4px) --- */
+  --e-1: 0.25rem;
+  --e-2: 0.5rem;
+  --e-3: 0.75rem;
+  --e-4: 1rem;
+  --e-5: 1.25rem;
+  --e-6: 1.5rem;
+  --e-8: 2rem;
+  --e-10: 2.5rem;
+  --e-12: 3rem;
+
+  /* --- Forma ---
+     Regra 3: dado nao tem raio, controle tem 3px. Nao existe um terceiro
+     valor, e nao existe sombra em lugar nenhum. */
+  --raio-dado: 0;
+  --raio-controle: 3px;
+
+  /* --- Movimento ---
+     Um unico momento nao disparado por acao existe no sistema inteiro: a
+     linha de base da serie mensal se desenha uma vez na carga. Todo o resto
+     e resposta a um gesto. */
+  --transicao-rapida: 120ms ease;
+  --transicao-media:  200ms ease;
+
+  /* --- Layout --- */
+  --largura-lateral: 232px;
+  --altura-topo: 64px;
+  --largura-conteudo-max: 1520px;
+
+  /* Aliases dos nomes antigos. Os templates ainda escrevem var(--text3) e
+     var(--mono) em atributos style; enquanto escreverem, estes precisam
+     existir e apontar para o sistema novo. */
+  --superficie-0: var(--papel);
+  --superficie-1: var(--esmalte);
+  --superficie-2: var(--esmalte);
+  --superficie-3: var(--papel);
+  --superficie-elevada: var(--esmalte);
+  --acento: var(--texto-forte);
+  --acento-forte: var(--texto-forte);
+  --acento-suave: var(--esmalte);
+  --sucesso: var(--texto-suave);
+  --alerta: var(--texto-forte);
+  --erro: var(--tarja);
+  --info: var(--texto-suave);
+  --borda-sutil: var(--fio);
+  --borda-media: var(--fio-forte);
+  --borda-forte: var(--fio-forte);
+  --bg: var(--papel);
+  --bg2: var(--esmalte);
+  --bg3: var(--esmalte);
+  --card: var(--papel);
+  --border: var(--fio);
+  --border2: var(--fio-forte);
+  --glass-bg: var(--esmalte);
+  --glass-border: var(--fio);
+  --accent: var(--texto-forte);
+  --accent2: var(--texto-forte);
+  --green: var(--texto-suave);
+  --yellow: var(--texto-forte);
+  --red: var(--tarja);
+  --text: var(--texto-forte);
+  --text2: var(--texto-medio);
+  --text3: var(--texto-suave);
+  --mono: var(--fonte-mono);
+  --sans: var(--fonte-texto);
+  --raio-sm: var(--raio-controle);
+  --raio-md: var(--raio-controle);
+  --raio-lg: var(--raio-dado);
+  --raio-pill: var(--raio-dado);
+  --radius: var(--raio-controle);
+  --radius-sm: var(--raio-controle);
+  --sidebar-width: var(--largura-lateral);
+  --topbar-height: var(--altura-topo);
+  --transition: var(--transicao-media);
+}
+
+
+/* ========================= 2. RESET E BASE =============================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--fonte-texto);
+  font-size: var(--texto-lg);
+  line-height: var(--altura-normal);
+  background: var(--papel);
+  color: var(--texto-medio);
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  /* Numero nunca danca de largura entre um estado e outro. */
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4 {
+  color: var(--texto-forte);
+  line-height: var(--altura-apertada);
+  font-weight: var(--peso-forte);
+  letter-spacing: -.005em;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--texto-xl); }
+h2 { font-size: var(--texto-xl); }
+h3 { font-size: var(--texto-lg); }
+
+p { max-width: var(--medida); }
+
+/* Sublinhado e a marca de link mais legivel que existe, e nao depende de
+   distinguir cor nenhuma. Fica fino e afastado para nao brigar com o texto;
+   engrossa no hover. */
+a {
+  color: var(--texto-forte);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--fio-forte);
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-color: var(--texto-forte); text-decoration-thickness: 2px; }
+
+img, svg, video { max-width: 100%; height: auto; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--esmalte); }
+::-webkit-scrollbar-thumb { background: var(--fio-forte); }
+::-webkit-scrollbar-thumb:hover { background: var(--texto-suave); }
+
+
+/* ======================= 3. ACESSIBILIDADE ============================== */
+
+/* Foco visivel em tudo que recebe teclado, com o raio de controle. */
+:focus-visible {
+  outline: 2px solid var(--texto-forte);
+  outline-offset: 2px;
+  border-radius: var(--raio-controle);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+.pular-para-conteudo {
+  position: absolute;
+  left: -9999px;
+  top: var(--e-2);
+  z-index: 999;
+  padding: var(--e-3) var(--e-5);
+  background: var(--texto-forte);
+  color: var(--papel);
+  font-weight: var(--peso-forte);
+  border-radius: var(--raio-controle);
+  text-decoration: none;
+}
+.pular-para-conteudo:focus { left: var(--e-4); }
+
+.apenas-leitor {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Regra 5: dado ausente e um buraco, nao um zero. A hachura e desenhada em
+   --texto-suave (5,53:1 sobre papel), acima do minimo de 3:1 exigido para
+   elemento grafico nao textual. Vem sempre acompanhada de texto. */
+.sem-leitura {
+  display: inline-block;
+  min-width: 56px;
+  height: 1em;
+  vertical-align: -.15em;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--texto-suave) 0 1px,
+    transparent 1px 5px
+  );
+  border-bottom: 1px solid var(--fio-forte);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --fio:       rgba(22, 32, 29, .34);
+    --fio-forte: rgba(22, 32, 29, .60);
+    --texto-suave: #414B47;
+  }
+}
+
+
+/* ========================= 4. LAYOUT ==================================== */
+/* Mobile-first: uma coluna; a lateral vira coluna fixa a partir de 1024px. */
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--papel);
+}
+
+.sidebar {
+  background: var(--esmalte);
+  border-bottom: 1px solid var(--fio-forte);
+  display: flex;
+  flex-direction: column;
+  padding: var(--e-4) 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding: 0 var(--e-4) var(--e-4);
+  border-bottom: 1px solid var(--fio);
+}
+
+/* A marca e um registrador de medidor: cinco casas, a ultima virada. E o que
+   o sistema faz — ler o numero e reparar na casa que mudou. */
+.brand-icon-sm, .brand-icon { flex-shrink: 0; display: block; }
+.brand-icon-sm svg, .brand-icon svg { display: block; width: 46px; height: 20px; }
+.marca-casa   { fill: none; stroke: var(--texto-forte); stroke-width: 1; }
+.marca-digito { fill: var(--texto-forte); }
+.marca-virada { fill: var(--tarja); }
+.marca-virada-digito { fill: var(--papel); }
+
+.brand-text strong {
+  display: block;
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-forte);
+  letter-spacing: -.01em;
+  color: var(--texto-forte);
+}
+
+.nav-section { padding: var(--e-3) var(--e-3) 0; }
+
+/* Sem caixa alta e sem tracking: o rotulo de grupo e uma palavra, nao um
+   ornamento. O que separa os grupos e o espaco, nao a tipografia. */
+.nav-label {
+  display: block;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--texto-suave);
+  padding: var(--e-3) var(--e-2) var(--e-1);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding: var(--e-2) var(--e-3);
+  border-left: 2px solid transparent;
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  color: var(--texto-medio);
+  text-decoration: none;
+  transition: background var(--transicao-rapida), color var(--transicao-rapida);
+  /* Alvo de toque do WCAG 2.5.5 no celular. */
+  min-height: 44px;
+}
+.nav-link:hover { background: var(--papel); color: var(--texto-forte); text-decoration: none; }
+.nav-link.active {
+  background: var(--papel);
+  border-left-color: var(--texto-forte);
+  color: var(--texto-forte);
+  font-weight: var(--peso-forte);
+}
+
+/* O unico vermelho da navegacao: a contagem de alertas em aberto. */
+.nav-badge {
+  margin-left: auto;
+  background: var(--tarja);
+  color: var(--papel);
+  font-family: var(--fonte-mono);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  line-height: 1;
+  padding: 3px var(--e-2);
+  border-radius: var(--raio-dado);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: var(--e-4) var(--e-3) 0;
+  border-top: 1px solid var(--fio);
+}
+
+.user-card { display: flex; align-items: center; gap: var(--e-3); padding: var(--e-2) var(--e-3); }
+.user-avatar {
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: var(--texto-forte);
+  color: var(--papel);
+  border-radius: var(--raio-dado);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--texto-sm); font-weight: var(--peso-forte);
+}
+.user-name { font-size: var(--texto-md); font-weight: var(--peso-forte); color: var(--texto-forte); line-height: 1.3; }
+.user-role { font-size: var(--texto-sm); color: var(--texto-suave); line-height: 1.3; }
+
+.logout-link {
+  margin-top: var(--e-1);
+  display: flex; align-items: center; gap: var(--e-3);
+  width: 100%; min-height: 44px;
+  padding: var(--e-2) var(--e-3);
+  border: none; background: none; cursor: pointer; text-align: left;
+  border-radius: var(--raio-controle);
+  font-size: var(--texto-md); font-weight: var(--peso-medio);
+  color: var(--texto-suave);
+  transition: color var(--transicao-rapida), background var(--transicao-rapida);
+}
+.logout-link:hover { color: var(--texto-forte); background: var(--papel); }
+.logout-link svg { width: 15px; height: 15px; }
+
+.main-content { flex: 1; min-width: 0; background: var(--papel); }
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  padding: var(--e-4);
+  border-bottom: 1px solid var(--fio-base);
+  background: var(--papel);
+}
+.topbar h1 { font-size: var(--texto-xl); }
+.topbar p { font-size: var(--texto-sm); color: var(--texto-suave); margin-top: 1px; max-width: none; }
+
+.page-body {
+  padding: var(--e-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  max-width: var(--largura-conteudo-max);
+}
+
+
+/* ======================= 5. COMPONENTES ================================= */
+
+/* --- O registro ---
+   Nao sao cartoes. E o registrador do medidor: celulas continuas separadas
+   por fio, sem raio e sem sombra. Os totais moram aqui porque sao contexto,
+   nao a pergunta do dia — por isso o numero e de 21px e nao de 28px.
+   O fio entre as celulas e o proprio fundo do grid aparecendo pelo gap. */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--fio-forte);
+  border: 1px solid var(--fio-forte);
+}
+
+.kpi-card { background: var(--esmalte); padding: var(--e-3) var(--e-4); min-width: 0; }
+
+.kpi-label {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--texto-suave);
+  margin-bottom: var(--e-1);
+}
+
+.kpi-value {
+  font-family: var(--fonte-mono);
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-medio);
+  letter-spacing: -.02em;
+  color: var(--texto-forte);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.kpi-unidade   { font-size: var(--texto-lg); color: var(--texto-suave); font-weight: var(--peso-normal); }
+.kpi-rodape    { font-size: var(--texto-sm); color: var(--texto-suave); margin-top: var(--e-2); }
+
+/* Linha de procedencia sob o numero: de onde aquele valor veio. O quadrado e
+   neutro — regra 1, o estado normal nao recebe cor. */
+.status-row {
+  display: flex; align-items: center; gap: var(--e-2);
+  margin-top: var(--e-2);
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+}
+.status-dot { width: 5px; height: 5px; flex-shrink: 0; background: var(--texto-suave); border-radius: var(--raio-dado); }
+
+/* --- Secao ---
+   .panel deixou de ser cartao. E uma secao aberta sobre o papel por um fio
+   solido — a linha de base do instrumento que vem abaixo. */
+.panel { border-top: 1px solid var(--fio-base); background: transparent; }
+
+.panel-header {
+  display: flex; flex-wrap: wrap;
+  align-items: baseline; justify-content: space-between; gap: var(--e-3);
+  padding: var(--e-3) 0 var(--e-4);
+}
+.panel-title {
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-forte);
+  letter-spacing: -.01em;
+  color: var(--texto-forte);
+}
+.panel-sub { font-size: var(--texto-sm); color: var(--texto-suave); margin-top: 2px; max-width: var(--medida); }
+
+/* --- Botoes ---
+   Primario e tinta cheia; secundario e so contorno. Nenhum gradiente,
+   nenhuma sombra, raio de controle (regra 3). */
+.btn-action, .btn-secondary, .panel-action, .btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--e-2);
+  min-height: 44px;
+  padding: var(--e-2) var(--e-4);
+  border-radius: var(--raio-controle);
+  font-family: var(--fonte-texto);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-forte);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--transicao-rapida), color var(--transicao-rapida);
+}
+.btn-action:hover, .btn-secondary:hover, .panel-action:hover { text-decoration: none; }
+
+.btn-action { background: var(--texto-forte); color: var(--papel); }
+.btn-action:hover { background: var(--texto-medio); }
+
+.btn-secondary, .panel-action { background: transparent; border-color: var(--fio-forte); color: var(--texto-forte); }
+.btn-secondary:hover, .panel-action:hover { background: var(--esmalte); border-color: var(--texto-forte); }
+
+.panel-action { padding: var(--e-2) var(--e-3); font-size: var(--texto-sm); white-space: nowrap; }
+
+.btn-disabled, .panel-action.disabled, [aria-disabled="true"] { opacity: .5; cursor: not-allowed; pointer-events: none; }
+
+.inline-actions { display: flex; gap: var(--e-2); flex-wrap: wrap; align-items: center; }
+.inline-actions form, .inline-action-form { margin: 0; display: inline-flex; }
+
+/* --- Tabelas ---
+   O livro-razao. O wrapper com overflow e obrigatorio: sem ele uma tabela de
+   nove colunas empurra a largura do body inteiro no celular. */
+.tabela-rolavel {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--fio);
+}
+.tabela-rolavel:focus-visible { outline-offset: -2px; }
+
+/* Secao sem cabecalho: o conteudo nao encosta no fio que abre a secao. */
+.panel > .tabela-rolavel:first-child { padding-top: var(--e-4); }
+
+.metrics-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
+  line-height: var(--altura-tabela);
+}
+/* Tabela de poucas colunas: sem o piso de largura, que criaria rolagem
+   horizontal onde ela nao e necessaria. */
+/* width auto para as colunas se ajustarem ao conteudo: duas colunas
+   esticadas ate 1440px afastam o rotulo do valor sem motivo. */
+.metrics-table.estreita { min-width: 0; width: auto; }
+.metrics-table.estreita td, .metrics-table.estreita th { padding-right: var(--e-8); }
+
+.metrics-table caption { text-align: left; padding: 0 0 var(--e-3); font-size: var(--texto-sm); color: var(--texto-suave); }
+
+/* Cabecalho em caixa baixa: o nome da coluna e uma palavra, nao um selo. O
+   fio solido abaixo dele e o eixo do livro-razao. */
+.metrics-table th {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-forte);
+  color: var(--texto-suave);
+  padding: var(--e-2) var(--e-4) var(--e-2) 0;
+  text-align: left;
+  background: var(--papel);
+  border-bottom: 1px solid var(--fio-base);
+  position: sticky; top: 0; z-index: 1;
+  white-space: nowrap;
+}
+.metrics-table td {
+  padding: var(--e-3) var(--e-4) var(--e-3) 0;
+  font-size: var(--texto-md);
+  color: var(--texto-medio);
+  border-bottom: 1px solid var(--fio);
+}
+.metrics-table tbody tr:hover td { background: var(--esmalte); }
+
+/* Numero alinhado a direita para os digitos empilharem coluna a coluna — e
+   por isso, nao por estetica. */
+.metrics-table td.numerico, .metrics-table th.numerico { text-align: right; padding-right: var(--e-5); }
+.metrics-table td.numerico { font-family: var(--fonte-mono); color: var(--texto-forte); }
+.metrics-table th:last-child, .metrics-table td:last-child { padding-right: 0; }
+
+/* Linha que leva ao detalhe. O link cobre a celula inteira, entao chega pelo
+   teclado — o antigo onclick no <tr> era inalcancavel por Tab e, com a CSP em
+   script-src self, nem sequer executava. */
+.linha-clicavel a { display: block; text-decoration: none; color: inherit; }
+.linha-clicavel a:hover { text-decoration: underline; text-decoration-color: var(--texto-forte); }
+.celula-forte, .celula-link { color: var(--texto-forte); font-weight: var(--peso-medio); }
+.metrics-table th[scope="row"] a { color: var(--texto-forte); font-family: var(--fonte-mono); }
+
+/* Segunda linha dentro da celula: de onde o valor veio. */
+.linha-secundaria {
+  display: block;
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+  font-family: var(--fonte-mono);
+  font-weight: var(--peso-normal);
+  margin-top: 1px;
+}
+
+/* --- Selos ---
+   Retangulo com fio a esquerda e um sinal grafico proprio. Estado nunca
+   depende so de cor: cada selo tem marca, peso de fio e texto ao lado. */
+.badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--e-1);
+  padding: 1px var(--e-2);
+  border-radius: var(--raio-dado);
+  border-left: 2px solid var(--fio-forte);
+  background: var(--esmalte);
+  font-family: var(--fonte-texto);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+.badge::before { font-weight: var(--peso-max); }
+.badge-green  { border-left-color: var(--texto-suave); color: var(--texto-medio); }
+.badge-green::before  { content: "\2713"; }
+.badge-yellow { border-left-color: var(--texto-forte); color: var(--texto-forte); }
+.badge-yellow::before { content: "\0021"; }
+.badge-red    { border-left-color: var(--tarja); color: var(--tarja); background: var(--tarja-fundo); }
+.badge-red::before    { content: "\2715"; }
+.badge-blue   { border-left-color: var(--texto-suave); color: var(--texto-medio); }
+.badge-blue::before   { content: "\00B7"; }
+.badge-cinza  { border-left-color: var(--fio-forte); color: var(--texto-suave); }
+
+/* --- Excecoes ---
+   O que a pagina existe para responder. Sem cartao e sem bolinha de
+   severidade: a marca fica na margem e a magnitude e o proprio texto. */
+.alert-list { display: flex; flex-direction: column; }
+
+.alert-item {
+  display: grid;
+  grid-template-columns: 3px 1fr;
+  gap: var(--e-4);
+  padding: var(--e-3) 0;
+  border-bottom: 1px solid var(--fio);
+}
+.alert-item:last-child { border-bottom: none; }
+
+.alert-severity { width: 3px; align-self: stretch; background: transparent; }
+.alert-severity.high   { background: var(--tarja); }
+.alert-severity.medium { background: var(--texto-forte); }
+.alert-severity.low    { background: var(--fio-forte); }
+
+.alert-title { font-size: var(--texto-lg); font-weight: var(--peso-forte); color: var(--texto-forte); line-height: var(--altura-apertada); }
+.alert-desc  { font-size: var(--texto-md); color: var(--texto-medio); margin-top: 2px; max-width: var(--medida); }
+.alert-time  { font-family: var(--fonte-mono); font-size: var(--texto-sm); color: var(--texto-suave); white-space: nowrap; }
+
+/* --- Mensagens do sistema --- */
+.message-list { display: flex; flex-direction: column; gap: var(--e-2); }
+.message {
+  display: flex; align-items: flex-start; gap: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  border-left: 3px solid var(--fio-forte);
+  background: var(--esmalte);
+  color: var(--texto-medio);
+  font-size: var(--texto-md);
+}
+.message::before { font-weight: var(--peso-max); flex-shrink: 0; }
+.message.success { border-left-color: var(--texto-forte); color: var(--texto-forte); }
+.message.success::before { content: "\2713"; }
+.message.warning { border-left-color: var(--texto-forte); color: var(--texto-forte); }
+.message.warning::before { content: "\0021"; }
+.message.error   { border-left-color: var(--tarja); color: var(--tarja); background: var(--tarja-fundo); }
+.message.error::before { content: "\2715"; }
+
+/* --- Formularios --- */
+.form-grid { display: grid; grid-template-columns: 1fr; gap: var(--e-4); padding: var(--e-4) 0; }
+.form-field label, .field label {
+  display: block;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-forte);
+  color: var(--texto-medio);
+  margin-bottom: var(--e-1);
+}
+.form-field input, .form-field select, .form-field textarea,
+.field input[type="text"], .field input[type="password"] {
+  width: 100%;
+  min-height: 44px;
+  background: var(--papel);
+  border: 1px solid var(--fio-forte);
+  border-radius: var(--raio-controle);
+  color: var(--texto-forte);
+  padding: var(--e-2) var(--e-3);
+  /* 16px evita o zoom automatico do Safari no iOS ao focar o campo. */
+  font-size: 16px;
+  font-family: var(--fonte-texto);
+  transition: border-color var(--transicao-rapida), box-shadow var(--transicao-rapida);
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus, .field input:focus {
+  border-color: var(--texto-forte);
+  box-shadow: inset 0 0 0 1px var(--texto-forte);
+  outline: none;
+}
+.form-field input[aria-invalid="true"], .field input.error { border-color: var(--tarja); }
+.form-field .helptext, .form-field ul { display: block; margin-top: var(--e-1); color: var(--texto-suave); font-size: var(--texto-sm); }
+.form-field .errorlist, .field-error { color: var(--tarja); list-style: none; font-size: var(--texto-sm); margin-top: var(--e-1); }
+.form-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--e-2); padding-bottom: var(--e-4); }
+
+.checkbox-label {
+  display: flex; align-items: center; gap: var(--e-2);
+  font-size: var(--texto-md); color: var(--texto-medio);
+  cursor: pointer; user-select: none; min-height: 44px;
+}
+.checkbox-label input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--texto-forte); cursor: pointer; }
+.field { margin-bottom: var(--e-4); }
+.field input::placeholder { color: var(--texto-suave); }
+.field-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--e-2); margin-bottom: var(--e-4); }
+.link-muted { font-size: var(--texto-md); color: var(--texto-medio); }
+
+.estado-vazio { padding: var(--e-8) 0; color: var(--texto-suave); font-size: var(--texto-lg); max-width: var(--medida); }
+
+
+/* ====================== 6. INSTRUMENTOS ================================= */
+/* Regra 4: todo numero tem escala. Nenhuma barra deste bloco aparece sem uma
+   linha de base e uma referencia de topo. */
+
+/* --- Serie mensal --- */
+.chart-escala {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-3);
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+  padding-bottom: var(--e-1);
+}
+.chart-escala strong { font-family: var(--fonte-mono); font-weight: var(--peso-medio); color: var(--texto-medio); }
+
+.chart-wrap {
+  position: relative;
+  min-height: 200px;
+  padding: var(--e-4) 0 0;
+  display: flex;
+  align-items: stretch;
+  gap: var(--e-2);
+  /* Grade a cada quarto da escala. A barra passou a ser mensuravel: da para
+     ler "pouco acima de tres quartos do maior mes" sem contar pixel. */
+  background-image: repeating-linear-gradient(to top, var(--fio) 0 1px, transparent 1px 25%);
+  background-position: bottom;
+  overflow-x: auto;
+}
+
+/* A linha de base solida. Este e o unico movimento nao disparado por acao no
+   sistema inteiro: ela se desenha uma vez, da esquerda para a direita, para
+   levar o olho ao eixo. Sob prefers-reduced-motion o bloco global zera a
+   duracao e ela simplesmente ja aparece pronta. */
+.chart-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--fio-base);
+  transform-origin: left center;
+  animation: tracar-base 320ms ease-out both;
+}
+@keyframes tracar-base { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.chart-col {
+  flex: 1;
+  min-width: 44px;
+  display: grid;
+  /* A faixa 1fr e a area util da barra: e sobre ela que o percentual de
+     altura vindo da view se aplica. */
+  grid-template-rows: 20px 1fr 22px;
+  align-items: end;
+  justify-items: center;
+  gap: var(--e-1);
+}
+
+.chart-value { font: var(--peso-medio) var(--texto-sm)/1 var(--fonte-mono); color: var(--texto-suave); white-space: nowrap; }
+.chart-label { font: var(--peso-normal) var(--texto-sm)/1 var(--fonte-texto); color: var(--texto-suave); padding-top: var(--e-2); }
+
+.chart-bar { width: 100%; max-width: 40px; min-height: 3px; border-radius: var(--raio-dado); background: rgba(22, 32, 29, .30); }
+
+/* O mes de maior gasto se distingue por valor de tinta, nao por cor: o
+   vermelho fica reservado para problema, e o maior mes nao e um problema. */
+.chart-bar.destaque { background: var(--texto-forte); }
+.chart-col:has(.chart-bar.destaque) .chart-value { color: var(--texto-forte); font-weight: var(--peso-forte); }
+.chart-col:hover .chart-bar { background: var(--texto-medio); }
+
+/* --- Barras comparativas (financeiro, relatorio) --- */
+.bar-list { display: flex; flex-direction: column; gap: var(--e-3); padding: var(--e-4) 0; }
+.bar-row { display: grid; grid-template-columns: 1fr; gap: var(--e-1); font-size: var(--texto-sm); color: var(--texto-suave); }
+.bar-label { color: var(--texto-forte); font-size: var(--texto-md); font-weight: var(--peso-medio); }
+/* Regra 4: grade a cada quarto da escala, igual as barras do medidor. Sem
+   ela a barra e comprimento sem referencia. */
+.bar-track {
+  height: 10px;
+  background-color: var(--esmalte);
+  background-image: repeating-linear-gradient(to right, var(--fio) 0 1px, transparent 1px 25%);
+  border-bottom: 1px solid var(--fio-forte);
+}
+.bar-fill { height: 100%; background: var(--texto-forte); }
+
+/* Nao existe variante de textura aqui de proposito. Textura distingue duas
+   series que dividem a mesma escala — energia e demanda, no detalhe da
+   fatura. Cada lista desta tela tem escala propria e nunca aparece ao lado
+   de outra, entao hachurar so uma delas seria enfeite. */
+.bar-value { color: var(--texto-forte); font-family: var(--fonte-mono); }
+.bar-meta  { color: var(--texto-suave); font-family: var(--fonte-mono); }
+
+/* --- Leituras do medidor --- */
+.meter-grid { display: grid; grid-template-columns: 1fr; gap: var(--e-6); padding: var(--e-4) 0; }
+.meter-chart { display: flex; flex-direction: column; gap: var(--e-4); }
+.meter-row { display: grid; grid-template-columns: 1fr; gap: var(--e-1); align-items: center; }
+.meter-label strong { display: block; color: var(--texto-forte); font-size: var(--texto-md); font-weight: var(--peso-forte); line-height: var(--altura-apertada); }
+.meter-label span   { display: block; color: var(--texto-suave); font-size: var(--texto-sm); }
+/* Regra 4: a barra horizontal tambem ganha grade. Sem ela nao da para dizer
+   se uma leitura esta na metade ou em dois tercos da maior do periodo. */
+.meter-track {
+  height: 12px;
+  background-color: var(--esmalte);
+  background-image: repeating-linear-gradient(to right, var(--fio) 0 1px, transparent 1px 25%);
+  border-bottom: 1px solid var(--fio-forte);
+}
+.meter-bar   { height: 100%; min-width: 3px; background: var(--texto-forte); }
+.meter-bar.demanda {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(-45deg, var(--texto-forte) 0 2px, transparent 2px 5px);
+}
+.meter-value { color: var(--texto-forte); font-family: var(--fonte-mono); font-size: var(--texto-md); font-weight: var(--peso-medio); }
+
+.meter-summary { display: grid; gap: 1px; background: var(--fio-forte); border: 1px solid var(--fio-forte); align-content: start; }
+.meter-stat { background: var(--esmalte); padding: var(--e-3) var(--e-4); }
+.meter-stat-label { color: var(--texto-suave); font-size: var(--texto-sm); font-weight: var(--peso-medio); }
+.meter-stat-value { color: var(--texto-forte); font-family: var(--fonte-mono); font-size: var(--texto-lg); font-weight: var(--peso-medio); margin-top: 1px; }
+.meter-stat-meta  { color: var(--texto-suave); font-size: var(--texto-sm); font-family: var(--fonte-mono); margin-top: 2px; }
+
+/* --- Historico do medidor --- */
+.history-grid { display: grid; grid-template-columns: 1fr; gap: var(--e-6); padding: var(--e-4) 0; }
+.history-card { border-top: 1px solid var(--fio-forte); padding-top: var(--e-3); }
+.history-card h3 { color: var(--texto-forte); font-size: var(--texto-lg); margin: 0; }
+.history-unit { color: var(--texto-suave); font-size: var(--texto-sm); margin-bottom: var(--e-3); }
+.history-row { display: grid; grid-template-columns: 50px 1fr 72px 32px; gap: var(--e-2); align-items: center; min-height: 22px; }
+.history-month, .history-days, .history-value { font-family: var(--fonte-mono); font-size: var(--texto-sm); }
+.history-month { color: var(--texto-medio); }
+.history-value { color: var(--texto-forte); text-align: right; }
+.history-days  { color: var(--texto-suave); text-align: right; }
+.history-track {
+  height: 7px;
+  background-color: var(--esmalte);
+  background-image: repeating-linear-gradient(to right, var(--fio) 0 1px, transparent 1px 25%);
+}
+.history-bar   { height: 100%; min-width: 2px; background: var(--texto-forte); }
+.history-bar.demanda {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(-45deg, var(--texto-forte) 0 2px, transparent 2px 5px);
+}
+
+/* --- Altas e baixas ---
+   A direcao nunca e comunicada so pela cor: toda alta traz seta para cima,
+   toda queda seta para baixo, e o rotulo textual acompanha. Conta subindo e o
+   unico caso que recebe vermelho, porque e o unico que e problema. */
+.variacao { display: inline-flex; align-items: baseline; gap: 2px; font-family: var(--fonte-mono); font-weight: var(--peso-medio); white-space: nowrap; }
+.variacao.alta    { color: var(--tarja); }
+.variacao.baixa   { color: var(--texto-forte); }
+.variacao.estavel { color: var(--texto-suave); }
+
+.duas-colunas { display: grid; grid-template-columns: 1fr; gap: var(--e-6); }
+
+.lista-variacao { list-style: none; display: flex; flex-direction: column; padding: 0; margin: 0; }
+.item-variacao {
+  display: flex; flex-wrap: wrap;
+  align-items: center; justify-content: space-between; gap: var(--e-3);
+  padding: var(--e-3) var(--e-3) var(--e-3) var(--e-4);
+  border-bottom: 1px solid var(--fio);
+  border-left: 3px solid transparent;
+}
+.item-variacao.alta  { border-left-color: var(--tarja); }
+.item-variacao.baixa { border-left-color: var(--texto-forte); }
+.item-variacao-link { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: inherit; text-decoration: none; }
+.item-variacao-link:hover .item-variacao-titulo { text-decoration: underline; }
+.item-variacao-titulo {
+  display: flex; align-items: center; gap: var(--e-2); flex-wrap: wrap;
+  font-size: var(--texto-md); font-weight: var(--peso-forte); color: var(--texto-forte);
+}
+.item-variacao-meta { font-size: var(--texto-sm); color: var(--texto-suave); font-family: var(--fonte-mono); }
+.item-variacao-numero {
+  display: flex; flex-direction: column; align-items: flex-end;
+  font-family: var(--fonte-mono); font-weight: var(--peso-medio);
+  font-size: var(--texto-lg); white-space: nowrap;
+}
+.item-variacao-numero.alta  { color: var(--tarja); }
+.item-variacao-numero.baixa { color: var(--texto-forte); }
+.item-variacao-numero small { font-size: var(--texto-sm); font-weight: var(--peso-normal); color: var(--texto-suave); }
+
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: var(--e-8); }
+
+
+/* ==================== 7. ENVIO DE ARQUIVOS ============================== */
+
+.zona-envio {
+  border: 1px dashed var(--fio-forte);
+  border-radius: var(--raio-controle);
+  padding: var(--e-8) var(--e-4);
+  text-align: center;
+  background: var(--esmalte);
+  transition: border-color var(--transicao-media);
+  cursor: pointer;
+}
+.zona-envio:hover, .zona-envio:focus-within, .zona-envio.arrastando { border-color: var(--texto-forte); border-style: solid; }
+
+.zona-envio-icone { width: 36px; height: 36px; margin: 0 auto var(--e-3); color: var(--texto-forte); }
+.zona-envio-titulo { font-size: var(--texto-xl); font-weight: var(--peso-forte); color: var(--texto-forte); }
+.zona-envio-dica { font-size: var(--texto-md); color: var(--texto-suave); margin: var(--e-1) auto 0; max-width: var(--medida); }
+
+/* Escondido, mas alcancavel pelo teclado — display:none o tiraria da ordem de
+   tabulacao. */
+.zona-envio input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+
+.lista-arquivos { display: flex; flex-direction: column; margin-top: var(--e-4); text-align: left; }
+
+.linha-arquivo {
+  display: flex; align-items: center; gap: var(--e-3); flex-wrap: wrap;
+  padding: var(--e-2) var(--e-3);
+  border-bottom: 1px solid var(--fio);
+  border-left: 3px solid transparent;
+  background: var(--papel);
+}
+.linha-arquivo-nome {
+  flex: 1; min-width: 0;
+  font-size: var(--texto-md); color: var(--texto-forte);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.linha-arquivo-meta { font-size: var(--texto-sm); color: var(--texto-suave); font-family: var(--fonte-mono); }
+.linha-arquivo-motivo { flex-basis: 100%; font-size: var(--texto-sm); color: var(--texto-medio); }
+
+/* A faixa lateral reforca o selo textual, nunca o substitui. */
+.linha-arquivo[data-estado="concluido"]   { border-left-color: var(--texto-suave); }
+.linha-arquivo[data-estado="processando"] { border-left-color: var(--texto-medio); }
+.linha-arquivo[data-estado="pendente"]    { border-left-color: var(--fio-forte); }
+.linha-arquivo[data-estado="erro"]        { border-left-color: var(--tarja); }
+.linha-arquivo[data-estado="recusado"]    { border-left-color: var(--texto-forte); }
+
+.barra-progresso { height: 10px; background: var(--esmalte); border-bottom: 1px solid var(--fio-forte); }
+.barra-progresso-preenchida { height: 100%; background: var(--texto-forte); transition: width var(--transicao-media); }
+
+/* O texto ao lado e o que informa: o indicador sozinho nao e anunciado por
+   leitor de tela. */
+.girando {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid var(--fio-forte);
+  border-top-color: var(--texto-forte);
+  border-radius: 50%;
+  animation: girar 700ms linear infinite;
+  flex-shrink: 0;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+
+/* ============= 8. TELAS FORA DO SHELL =================================== */
+
+/* --- Pagina publica (erro / em construcao) --- */
+.public-page { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: var(--e-5); background: var(--papel); }
+.public-card { width: min(460px, 100%); border-top: 2px solid var(--fio-base); padding-top: var(--e-5); }
+.public-card h1 { font-size: var(--texto-3xl); margin-bottom: var(--e-2); }
+.public-card p  { color: var(--texto-medio); margin-bottom: var(--e-5); }
+.public-card a  {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: var(--e-2) var(--e-4);
+  color: var(--papel); background: var(--texto-forte);
+  border-radius: var(--raio-controle); font-weight: var(--peso-forte);
+  text-decoration: none;
+}
+
+/* --- Tela de acesso --- */
+.login-wrap { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 1fr; }
+
+/* No celular a coluna ilustrativa some: ocupa a tela toda sem ajudar quem so
+   quer entrar. Reaparece a partir do tablet. */
+.login-visual { display: none; }
+
+.login-form-panel { background: var(--papel); display: flex; align-items: center; justify-content: center; padding: var(--e-10) var(--e-5); }
+.login-box { width: 100%; max-width: 340px; }
+.login-heading { font-size: var(--texto-3xl); letter-spacing: -.02em; margin-bottom: var(--e-1); }
+.login-sub { font-size: var(--texto-lg); color: var(--texto-medio); margin-bottom: var(--e-8); }
+.login-divider { font-size: var(--texto-sm); color: var(--texto-suave); margin-top: var(--e-6); }
+
+.btn-primary { width: 100%; min-height: 48px; background: var(--texto-forte); color: var(--papel); border: none; font-size: var(--texto-lg); }
+.btn-primary:hover { background: var(--texto-medio); }
+
+/* Alertas da tela de acesso (fora do app shell). */
+.alert { padding: var(--e-3) var(--e-4); border-left: 3px solid var(--fio-forte); background: var(--esmalte); font-size: var(--texto-md); margin-bottom: var(--e-5); }
+.alert-error   { border-left-color: var(--tarja); color: var(--tarja); background: var(--tarja-fundo); }
+.alert-success { border-left-color: var(--texto-forte); color: var(--texto-forte); }
+.alert-warning { border-left-color: var(--texto-forte); color: var(--texto-forte); }
+
+/* Papel milimetrado da coluna ilustrativa: a folha em que se anota medicao. */
+.grid-lines {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--fio) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fio) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.visual-brand { position: relative; display: flex; align-items: center; gap: var(--e-3); }
+.brand-name { font-size: var(--texto-xl); font-weight: var(--peso-forte); color: var(--texto-forte); letter-spacing: -.01em; }
+
+.visual-features { position: relative; display: flex; flex-direction: column; }
+.feature-card { padding: var(--e-4) 0; border-top: 1px solid var(--fio-forte); display: flex; align-items: flex-start; gap: var(--e-3); background: transparent; }
+.feature-icon { width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.feature-icon svg { width: 18px; height: 18px; fill: none; stroke: var(--texto-forte); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.feature-info  { flex: 1; min-width: 0; }
+.feature-title { font-size: var(--texto-md); font-weight: var(--peso-forte); color: var(--texto-forte); }
+.feature-desc  { font-size: var(--texto-sm); color: var(--texto-medio); }
+.visual-footer { position: relative; color: var(--texto-suave); font-size: var(--texto-sm); }
+
+
+/* ======================= 9. UTILITARIOS ================================= */
+
+.pilha  { display: flex; flex-direction: column; gap: var(--e-4); }
+.linha  { display: flex; flex-wrap: wrap; gap: var(--e-3); align-items: center; }
+.entre  { justify-content: space-between; }
+.mono   { font-family: var(--fonte-mono); }
+.suave  { color: var(--texto-medio); }
+.fraco  { color: var(--texto-suave); }
+.pequeno{ font-size: var(--texto-sm); }
+.centro { text-align: center; }
+
+
+/* ======================= 10. BREAKPOINTS ================================ */
+/* Mobile e a base acima. Estes blocos so acrescentam. */
+
+@media (min-width: 640px) {
+  .page-body { padding: var(--e-6); }
+  .topbar { padding: var(--e-4) var(--e-6); }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bar-row { grid-template-columns: minmax(120px, 220px) 1fr auto auto; align-items: center; gap: var(--e-3); }
+  .meter-row { grid-template-columns: 200px 1fr 84px; gap: var(--e-3); }
+  .meter-value { text-align: right; }
+  /* auto-fit em vez de contagem fixa: uma fatura pode trazer um grupo,
+     dois ou quatro, e com contagem fixa dois grupos ficavam espremidos
+     numa grade de tres com uma coluna vazia ao lado. */
+  .history-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+  .login-wrap { grid-template-columns: 1fr 420px; }
+  .login-visual {
+    display: flex; flex-direction: column; justify-content: space-between;
+    background: var(--esmalte);
+    border-right: 1px solid var(--fio-forte);
+    padding: var(--e-10);
+    position: relative;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-layout { display: grid; grid-template-columns: var(--largura-lateral) 1fr; }
+
+  .sidebar {
+    border-bottom: none;
+    border-right: 1px solid var(--fio-forte);
+    position: sticky; top: 0;
+    height: 100vh; height: 100dvh;
+    overflow-y: auto;
+    padding: var(--e-5) 0;
+  }
+
+  .topbar { height: var(--altura-topo); padding: 0 var(--e-8); flex-wrap: nowrap; position: sticky; top: 0; z-index: 20; background: var(--papel); }
+
+  .page-body { padding: var(--e-8); }
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .metrics-table { min-width: 0; }
+
+  /* Apontador preciso: da para compactar sem prejudicar o acerto do clique. */
+  .panel-action { min-height: 34px; }
+
+  .duas-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-grid { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+  .meter-grid { grid-template-columns: minmax(0, 1fr) 340px; }
+  .login-wrap { grid-template-columns: 1fr 460px; }
+}
+
+@media (min-width: 1440px) { .page-body { margin: 0 auto; width: 100%; } }
+
+
+/* ======================= 11. IMPRESSAO ================================== */
+/* O sistema ja e tinta sobre papel; imprimir e so tirar a navegacao. */
+
+@media print {
+  .sidebar, .btn-action, .btn-secondary, .panel-action, .inline-actions { display: none !important; }
+  body { background: #fff; color: #000; }
+  .app-layout { display: block; }
+  .topbar { position: static; border-bottom: 1px solid #000; }
+  .metrics-table { min-width: 0; }
+  .metrics-table th { position: static; }
+  .panel, .kpi-card, .history-card { break-inside: avoid; }
+  .chart-wrap::after { animation: none; transform: none; }
+}

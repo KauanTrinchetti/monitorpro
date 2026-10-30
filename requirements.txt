@@ -1,0 +1,41 @@
+# Versoes fixadas, inclusive as transitivas, para o deploy ser reproduzivel.
+# Instale com: python -m pip install -r requirements.txt
+#
+# A CI roda pip-audit sobre este arquivo a cada push, e o Dependabot abre
+# pull request quando sai versao nova. Ultima auditoria limpa: 30/10/2026.
+
+# --- Framework ---
+Django==6.0.9
+asgiref==3.11.1
+sqlparse==0.6.0
+tzdata==2026.2
+
+# --- Banco de dados ---
+psycopg2-binary==2.9.12
+
+# --- Configuracao ---
+python-dotenv==1.2.2
+
+# --- Seguranca: hashing de senha Argon2id ---
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+
+# --- Leitura de PDF ---
+pdfplumber==0.11.9
+pdfminer.six==20251230
+pypdfium2==5.9.0
+pillow==13.0.0
+
+# --- Geracao de PDF (relatorios) ---
+reportlab==4.5.1
+
+# --- Transitivas ---
+cffi==2.0.0
+charset-normalizer==3.4.7
+cryptography==50.0.2
+pycparser==3.0
+
+# requests e beautifulsoup4 sairam em 30/10/2026: so os scripts de estudo em
+# scripts_legado/ os usavam. Menos dependencia, menos superficie — e foram
+# embora junto tres pacotes com vulnerabilidade conhecida (urllib3, certifi,
+# soupsieve).

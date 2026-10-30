@@ -1,0 +1,163 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Logs e backups - MonitorPro{% endblock %}
+{% block page_title %}Logs e backups{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}
+  {% if pode_administrar_sistema %}
+    <form method="POST" action="{% url 'backup_dados' %}" class="inline-action-form">
+      {% csrf_token %}
+      <input type="hidden" name="operation_token" value="{{ token_backup }}">
+      <button type="submit" class="btn-action">Gerar backup</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block page_content %}
+  <section class="panel" aria-labelledby="titulo-logs">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-logs">Logs do robô</h2>
+        <p class="panel-sub">Histórico das execuções de coleta, com a mensagem que cada uma deixou.</p>
+      </div>
+      {% if account.pode_operar %}
+        {% if coleta_em_andamento %}
+          <span class="panel-action disabled">Coletando...</span>
+        {% else %}
+          <form method="POST" action="{% url 'coletar_agora' %}" class="inline-action-form">
+            {% csrf_token %}
+            <input type="hidden" name="operation_token" value="{{ token_coleta }}">
+            <button type="submit" class="panel-action">Coletar agora</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Logs do robô (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th scope="col">Início</th>
+            <th scope="col">Situação</th>
+            <th scope="col">Mensagem</th>
+            <th scope="col">Fim</th>
+            <th scope="col">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr>
+              <td class="mono">{{ log.iniciado_em|date:"d/m/Y H:i" }}</td>
+              <td>
+                {% if log.status == "processando" %}
+                  <span class="badge badge-blue">Processando</span>
+                {% elif log.status == "sucesso" %}
+                  <span class="badge badge-green">Sucesso</span>
+                {% elif log.status == "erro" %}
+                  <span class="badge badge-red">Erro</span>
+                {% else %}
+                  <span class="badge badge-yellow">Aviso</span>
+                {% endif %}
+              </td>
+              <td class="celula-forte">{{ log.mensagem }}</td>
+              <td class="mono">{{ log.finalizado_em|date:"d/m/Y H:i"|default:"-" }}</td>
+              <td>{{ log.detalhes|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5">Nenhum log registrado ainda.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% comment %} O painel de backups so existe para superusuario. O arquivo gerado
+     traz dados de todas as empresas, entao nem a existencia dele interessa ao
+     administrador de um cliente especifico.
+
+     O fechamento do bloco condicional estava dentro da secao, antes da tag de
+     fechamento dela: com a
+     permissao negada, sobrava um </div> solto que fechava a area de conteudo
+     cedo demais e desalinhava tudo o que vinha abaixo. {% endcomment %}
+  {% if pode_administrar_sistema %}
+    <section class="panel" aria-labelledby="titulo-backups">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title" id="titulo-backups">Backups</h2>
+          <p class="panel-sub">Cópia de todo o sistema. Inclui os dados de todas as empresas, não só os desta conta.</p>
+        </div>
+      </div>
+      <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Backups (role horizontalmente para ver todas as colunas)">
+        <table class="metrics-table estreita">
+          <thead>
+            <tr>
+              <th scope="col">Arquivo</th>
+              <th scope="col" class="numerico">Tamanho</th>
+              <th scope="col">Criado em</th>
+              <th scope="col">Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for backup in backups %}
+              <tr>
+                <td class="mono celula-forte">{{ backup.arquivo }}</td>
+                <td class="numerico">{{ backup.tamanho_bytes|filesizeformat }}</td>
+                <td class="mono">{{ backup.criado_em|date:"d/m/Y H:i" }}</td>
+                <td>{{ backup.status }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4">Nenhum backup criado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="panel" aria-labelledby="titulo-auditoria">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-auditoria">Auditoria de segurança</h2>
+        <p class="panel-sub">Ações sensíveis registradas pelo sistema: quem fez, de onde e quando.</p>
+      </div>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Auditoria de segurança (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Evento</th>
+            <th scope="col">Usuário</th>
+            <th scope="col">Empresa</th>
+            <th scope="col">IP</th>
+            <th scope="col">Resumo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for evento in eventos_auditoria %}
+            <tr>
+              <td class="mono">{{ evento.criado_em|date:"d/m/Y H:i" }}</td>
+              {% comment %} Evento e categoria, nao estado: um selo em cada linha
+                 de uma tabela inteira nao distingue nada e gasta a atencao que o
+                 selo deve guardar para o que saiu do normal. {% endcomment %}
+              <td>{{ evento.get_acao_display }}</td>
+              <td class="celula-forte">
+                {% if evento.usuario %}{{ evento.usuario.get_full_name|default:evento.usuario.username }}{% else %}-{% endif %}
+              </td>
+              <td>{{ evento.empresa|default:"-" }}</td>
+              <td class="mono">{{ evento.ip|default:"-" }}</td>
+              <td>{{ evento.resumo }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">Nenhum evento de auditoria registrado ainda.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

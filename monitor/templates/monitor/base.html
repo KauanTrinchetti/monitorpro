@@ -1,0 +1,34 @@
+{% load estaticos %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% comment %} O sistema e tinta sobre papel: uma folha clara, como o documento
+     que ele le. O navegador precisa saber disso para pintar campo de formulario
+     e barra de rolagem na mesma chave. {% endcomment %}
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="{% block description %}Monitoramento automático de faturas de energia elétrica.{% endblock %}">
+  <title>{% block title %}MonitorPro{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  {% comment %} Archivo carrega todo o texto: grotesca industrial desenhada para
+     interface densa. IBM Plex Mono aparece so em valor medido ou extraido — e a
+     marca de que aquele numero saiu de um medidor ou de um PDF. {% endcomment %}
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  {% comment %} Design system unico. Antes cada template carregava o proprio CSS inline:
+     nada era reaproveitado nem cacheado entre as paginas. {% endcomment %}
+  <link rel="stylesheet" href="{% estatico 'monitor/css/monitorpro.css' %}">
+
+  {# Ajustes pontuais por pagina. O grosso do estilo vive no arquivo acima. #}
+</head>
+<body>
+  {% comment %} Primeiro item da ordem de tabulacao: permite a quem navega por teclado
+     saltar o menu inteiro e ir direto ao conteudo da pagina. {% endcomment %}
+  <a class="pular-para-conteudo" href="#conteudo-principal">Pular para o conteúdo</a>
+
+  {% block body %}{% endblock %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,124 @@
+{% extends "monitor/base.html" %}
+
+{% comment %} Todo o CSS que estava aqui migrou para monitor/css/monitorpro.css.
+   Este template cuida so da estrutura e da semantica. {% endcomment %}
+
+{% block body %}
+<div class="app-layout">
+
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="sidebar-brand">
+      {% comment %} A marca e um registrador de medidor: cinco casas, a ultima
+         virada. E exatamente o que o sistema faz — ler o numero e reparar na
+         casa que mudou. Sem texto dentro, para nao depender de metrica de
+         fonte em 20px de altura. {% endcomment %}
+      <div class="brand-icon-sm" aria-hidden="true">
+        <svg viewBox="0 0 46 20" focusable="false">
+          <rect class="marca-casa" x="0.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="9.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="18.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="27.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-virada" x="36.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-digito" x="2.5" y="6" width="5" height="2"/>
+          <rect class="marca-digito" x="11.5" y="11" width="5" height="2"/>
+          <rect class="marca-digito" x="20.5" y="8" width="5" height="2"/>
+          <rect class="marca-digito" x="29.5" y="13" width="5" height="2"/>
+          <rect class="marca-virada-digito" x="38.5" y="4" width="5" height="2"/>
+        </svg>
+      </div>
+      <div class="brand-text"><strong>MonitorPro</strong></div>
+    </div>
+
+    <nav class="nav-section" aria-labelledby="grupo-principal">
+      <span class="nav-label" id="grupo-principal">Principal</span>
+      {% comment %} aria-current="page" informa ao leitor de tela qual item e a pagina
+         atual; a classe .active sozinha e apenas visual. {% endcomment %}
+      <a href="{% url 'dashboard' %}" class="nav-link {% if aba_ativa == 'dashboard' %}active{% endif %}"
+         {% if aba_ativa == 'dashboard' %}aria-current="page"{% endif %}>Visão geral</a>
+      <a href="{% url 'relatorio_completo' %}" class="nav-link {% if aba_ativa == 'relatorio' %}active{% endif %}"
+         {% if aba_ativa == 'relatorio' %}aria-current="page"{% endif %}>Relatórios</a>
+      <a href="{% url 'financeiro' %}" class="nav-link {% if aba_ativa == 'financeiro' %}active{% endif %}"
+         {% if aba_ativa == 'financeiro' %}aria-current="page"{% endif %}>Financeiro</a>
+      <a href="{% url 'historico' %}" class="nav-link {% if aba_ativa == 'historico' %}active{% endif %}"
+         {% if aba_ativa == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
+    </nav>
+
+    <nav class="nav-section" aria-labelledby="grupo-monitoramento">
+      <span class="nav-label" id="grupo-monitoramento">Monitoramento</span>
+      {% if account.pode_operar %}
+        <a href="{% url 'upload_faturas' %}" class="nav-link {% if aba_ativa == 'upload' %}active{% endif %}"
+           {% if aba_ativa == 'upload' %}aria-current="page"{% endif %}>Enviar faturas</a>
+      {% endif %}
+      {% if account.pode_administrar %}
+        <a href="{% url 'unidades' %}" class="nav-link {% if aba_ativa == 'unidades' %}active{% endif %}"
+           {% if aba_ativa == 'unidades' %}aria-current="page"{% endif %}>Unidades</a>
+      {% endif %}
+      <a href="{% url 'alertas' %}" class="nav-link {% if aba_ativa == 'alertas' %}active{% endif %}"
+         {% if aba_ativa == 'alertas' %}aria-current="page"{% endif %}>
+        Alertas
+        {% if account.alertas_pendentes > 0 %}
+          <span class="nav-badge">{{ account.alertas_pendentes }}<span class="apenas-leitor"> alertas pendentes</span></span>
+        {% endif %}
+      </a>
+      <a href="{% url 'conformidade' %}" class="nav-link {% if aba_ativa == 'conformidade' %}active{% endif %}"
+         {% if aba_ativa == 'conformidade' %}aria-current="page"{% endif %}>Conformidade</a>
+      {% if account.pode_operar %}
+        <a href="{% url 'coletas' %}" class="nav-link {% if aba_ativa == 'coletas' %}active{% endif %}"
+           {% if aba_ativa == 'coletas' %}aria-current="page"{% endif %}>Coletas</a>
+        <a href="{% url 'logs_robo' %}" class="nav-link {% if aba_ativa == 'logs' %}active{% endif %}"
+           {% if aba_ativa == 'logs' %}aria-current="page"{% endif %}>Logs e backups</a>
+      {% endif %}
+    </nav>
+
+    {% if account.pode_administrar %}
+      <nav class="nav-section" aria-labelledby="grupo-conta">
+        <span class="nav-label" id="grupo-conta">Conta</span>
+        <a href="{% url 'configuracoes' %}" class="nav-link {% if aba_ativa == 'configuracoes' %}active{% endif %}"
+           {% if aba_ativa == 'configuracoes' %}aria-current="page"{% endif %}>Configurações</a>
+      </nav>
+    {% endif %}
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" aria-hidden="true">{{ request.user.username|first|upper }}</div>
+        <div>
+          <div class="user-name">{{ account.nome }}</div>
+          {% comment %} So o papel. O numero da conta ja aparece no subtitulo da
+             pagina; repetir aqui era acessorio. {% endcomment %}
+          <div class="user-role">{{ account.papel }}</div>
+        </div>
+      </div>
+      <form method="POST" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="logout-link">
+          <svg aria-hidden="true" focusable="false" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Sair da conta
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="main-content" id="conteudo-principal" tabindex="-1">
+    <header class="topbar">
+      <div>
+        <h1>{% block page_title %}{% endblock %}</h1>
+        <p>{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      {% block page_actions %}{% endblock %}
+    </header>
+
+    <div class="page-body">
+      {% if messages %}
+        {% comment %} role="status" faz o leitor de tela anunciar a mensagem assim que
+           ela aparece, sem tirar o foco de onde a pessoa esta. {% endcomment %}
+        <div class="message-list" role="status" aria-live="polite">
+          {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% block page_content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

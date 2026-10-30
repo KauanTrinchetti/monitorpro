@@ -1,0 +1,108 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Coletas - MonitorPro{% endblock %}
+{% block page_title %}Coletas{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+{% block page_actions %}
+  {% if coleta_em_andamento %}
+    <span class="btn-action btn-disabled">Coletando...</span>
+  {% else %}
+    <form method="POST" action="{% url 'coletar_agora' %}" class="inline-action-form">
+      {% csrf_token %}
+      <input type="hidden" name="operation_token" value="{{ token_coleta }}">
+      <button type="submit" class="btn-action">Coletar agora</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block page_content %}
+  <section class="panel" aria-labelledby="titulo-execucoes">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-execucoes">Últimas execuções</h2>
+        <p class="panel-sub">Cada linha é uma passada do robô pela caixa de entrada, com o que ela encontrou.</p>
+      </div>
+      <a href="{% url 'logs_robo' %}" class="panel-action">Ver logs completos</a>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Últimas execuções (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table estreita">
+        <thead>
+          <tr>
+            <th scope="col">Início</th>
+            <th scope="col">Situação</th>
+            <th scope="col">Mensagem</th>
+            <th scope="col">Fim</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr>
+              <td class="mono">{{ log.iniciado_em|date:"d/m/Y H:i" }}</td>
+              <td>
+                {% comment %} Cada selo tem marca propria alem da cor: · em
+                   andamento, ✓ concluiu, ✕ falhou, ! precisa de atencao. {% endcomment %}
+                {% if log.status == "processando" %}
+                  <span class="badge badge-blue">Processando</span>
+                {% elif log.status == "sucesso" %}
+                  <span class="badge badge-green">Sucesso</span>
+                {% elif log.status == "erro" %}
+                  <span class="badge badge-red">Erro</span>
+                {% else %}
+                  <span class="badge badge-yellow">Aviso</span>
+                {% endif %}
+              </td>
+              <td class="celula-forte">{{ log.mensagem }}</td>
+              <td class="mono">{{ log.finalizado_em|date:"d/m/Y H:i"|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4">Nenhuma coleta registrada ainda. Use "Coletar agora" para acionar a primeira.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="titulo-capturadas">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-capturadas">Faturas capturadas recentemente</h2>
+        <p class="panel-sub">O que as últimas coletas trouxeram para a base.</p>
+      </div>
+      <a href="{% url 'relatorio_completo' %}" class="panel-action">Abrir relatório</a>
+    </div>
+    <div class="tabela-rolavel" tabindex="0" role="region" aria-label="Faturas capturadas (role horizontalmente para ver todas as colunas)">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th scope="col">Fatura</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Unidade</th>
+            <th scope="col">Vencimento</th>
+            <th scope="col" class="numerico">Valor</th>
+            <th scope="col" class="numerico">Consumo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fat in lista_faturas %}
+            {% comment %} O link vai na unidade e chega pelo teclado; o onclick que
+               estava no <tr> era inalcancavel por Tab e a CSP nem o executava. {% endcomment %}
+            <tr class="linha-clicavel">
+              <td class="mono">#{{ fat.id }}</td>
+              <td>{{ fat.cliente }}</td>
+              <td class="celula-forte"><a href="{% url 'detalhe_fatura' fat.id %}">{{ fat.unidade }}</a></td>
+              <td class="mono">{{ fat.vencimento }}</td>
+              <td class="numerico">{{ fat.valor }}</td>
+              <td class="numerico">{{ fat.consumo }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">Nenhuma fatura capturada ainda.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

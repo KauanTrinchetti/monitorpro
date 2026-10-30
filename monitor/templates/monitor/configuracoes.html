@@ -1,0 +1,47 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}Configurações - MonitorPro{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+{% block page_subtitle %}{{ account.empresa }}, conta {{ account.codigo }}{% endblock %}
+
+{% block page_content %}
+  <form method="POST" class="panel">
+    {% csrf_token %}
+    <input type="hidden" name="operation_token" value="{{ operation_token }}">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Identidade da empresa</h2>
+        <p class="panel-sub">Estes dados aparecem no cabeçalho dos relatórios em PDF e na assinatura dos alertas enviados.</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      {% for field in form.visible_fields %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+          {% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-action">Salvar configurações</button>
+    </div>
+  </form>
+
+  {% comment %} Isto nao e um alerta: e uma nota comercial. Estava montado com o
+     componente de excecoes, que existe para o que precisa de acao agora — usar
+     a mesma marcacao aqui gastava a atencao que ela deve reservar. Virou texto.
+     {% endcomment %}
+  <section class="panel" aria-labelledby="titulo-suporte">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-suporte">Suporte mensal incluso</h2>
+      </div>
+    </div>
+    <p class="estado-vazio">
+      A operação assistida cobre ajustes do robô, acompanhamento de erros de leitura,
+      backup e pequenas melhorias, sem abrir chamado a cada mudança.
+    </p>
+  </section>
+{% endblock %}

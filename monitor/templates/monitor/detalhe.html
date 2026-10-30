@@ -1,0 +1,146 @@
+{% extends "monitor/app_shell.html" %}
+
+{% block title %}{{ unidade.nome|default:fatura.cliente_nome }} - MonitorPro{% endblock %}
+{% comment %} O titulo passou a ser a unidade, nao o id. Quem abre esta tela vem
+   do livro-razao e procura "Galpao 2 — Osasco"; o numero da fatura e um dado
+   de maquina e desceu para o subtitulo, em mono. {% endcomment %}
+{% block page_title %}{{ unidade.nome|default:fatura.cliente_nome }}{% endblock %}
+{% block page_subtitle %}Fatura <span class="mono">#{{ fatura.id }}</span>, instalação <span class="mono">{{ fatura.instalacao }}</span>{% endblock %}
+{% block page_actions %}<a href="{% url 'relatorio_completo' %}" class="btn-secondary">Voltar ao relatório</a>{% endblock %}
+
+
+{% block page_content %}
+  {% comment %} Aqui o registro abre a pagina com razao: a pergunta desta tela e
+   "o que esta fatura diz", e sao estes tres valores que respondem. Todos
+   sairam do PDF, entao todos sao mono. {% endcomment %}
+  <section aria-label="Valores desta fatura">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Vencimento</div>
+        <div class="kpi-value">{{ fatura.data_vencimento|date:"d/m/Y"|default:"-" }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Valor</div>
+        {% comment %} valor_pagar e Decimal e chegava aqui cru: com pt-br o Django ja
+           poe a virgula, mas nao agrupa o milhar, e uma fatura de 12480,90
+           ficava sem ponto. O sufixo g forca o agrupamento do locale. {% endcomment %}
+        <div class="kpi-value">R$ {{ fatura.valor_pagar|floatformat:"2g" }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Consumo</div>
+        <div class="kpi-value">{{ fatura.consumo_kwh|default:"0" }} <span class="kpi-unidade">kWh</span></div>
+      </div>
+    </div>
+    <p class="kpi-rodape">
+      Período de leitura: <span class="mono">{{ fatura.periodo_leitura|default:"não informado no PDF" }}</span>.
+      Cliente na fatura: {{ fatura.cliente_nome }}.
+    </p>
+  </section>
+
+  {% if leituras_medidor %}
+  <section class="panel" aria-labelledby="titulo-leituras">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-leituras">Leituras do medidor</h2>
+        {% comment %} A legenda e obrigatoria: textura sem explicacao e enigma. {% endcomment %}
+        <p class="panel-sub">
+          Barra cheia é energia, barra hachurada é demanda. A diferença está na textura, não na cor,
+          para continuar legível impressa em preto e branco.
+        </p>
+      </div>
+    </div>
+
+    {% comment %} Regra 4: a barra so significa alguma coisa contra uma escala. O
+       topo dela e a maior leitura desta fatura — a que a view marcou com
+       largura 100. {% endcomment %}
+    <div class="chart-escala">
+      <span>
+        Topo da escala
+        {% for leitura in leituras_medidor %}{% if leitura.largura >= 100 %}<strong>{{ leitura.consumo }}</strong>{% endif %}{% endfor %}
+      </span>
+      <span>linha de grade a cada 25%</span>
+    </div>
+
+    <div class="meter-grid">
+      <div class="meter-chart">
+        {% for leitura in leituras_medidor %}
+          <div class="meter-row">
+            <div class="meter-label">
+              <strong>{{ leitura.grandeza }}</strong>
+              <span>{{ leitura.posto }}, medidor {{ leitura.medidor }}</span>
+            </div>
+            <div class="meter-track" title="{{ leitura.grandeza }}: {{ leitura.consumo }}">
+              <div class="meter-bar {% if leitura.tipo == 'demanda' %}demanda{% endif %}" style="width: {{ leitura.largura }}%;"></div>
+            </div>
+            <div class="meter-value">{{ leitura.consumo }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="meter-summary">
+        {% for leitura in leituras_medidor %}
+          <div class="meter-stat">
+            <div class="meter-stat-label">{{ leitura.grandeza }}, {{ leitura.posto }}</div>
+            {% comment %} A seta e notacao de medicao: o registrador avancou de um
+               numero para o outro. {% endcomment %}
+            <div class="meter-stat-value">{{ leitura.leitura_anterior }} &rarr; {{ leitura.leitura_atual }}</div>
+            <div class="meter-stat-meta">constante {{ leitura.constante }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if historico_medidor %}
+  <section class="panel" aria-labelledby="titulo-historico">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-historico">{% if leituras_medidor %}Histórico de consumo e demanda{% else %}Histórico de consumo{% endif %}</h2>
+        <p class="panel-sub">
+          Os meses anteriores desta mesma instalação, com o número de dias que cada fatura cobriu.
+          Um mês com mais dias faturados explica boa parte de um consumo maior.
+        </p>
+      </div>
+    </div>
+
+    <div class="history-grid">
+      {% for grupo in historico_medidor %}
+        <div class="history-card">
+          <h3>{{ grupo.titulo }}</h3>
+          <p class="history-unit">{{ grupo.unidade }} por mês, e os dias faturados</p>
+          {% for linha in grupo.linhas %}
+            <div class="history-row">
+              <div class="history-month">{{ linha.mes }}</div>
+              <div class="history-track" title="{{ linha.mes }}: {{ linha.valor }} {{ grupo.unidade }}">
+                <div class="history-bar {% if grupo.tipo == 'demanda' %}demanda{% endif %}" style="width: {{ linha.largura }}%;"></div>
+              </div>
+              <div class="history-value">{{ linha.valor }}</div>
+              <div class="history-days">{{ linha.dias }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% comment %} Regra 5: dado que falta e um buraco, nao um zero — e o buraco vem
+     com a explicacao. Fatura digitalizada e o caso mais comum: o robo tira os
+     totais do texto, mas nao encontra a tabela de leituras. {% endcomment %}
+  {% if not leituras_medidor and not historico_medidor %}
+  <section class="panel" aria-labelledby="titulo-sem-leitura">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title" id="titulo-sem-leitura">Sem leituras de medidor</h2>
+      </div>
+    </div>
+    <p class="estado-vazio">
+      <span class="sem-leitura" aria-hidden="true"></span>
+      Esta fatura não trouxe a tabela de leituras. Costuma acontecer com PDF digitalizado, em que o
+      robô consegue extrair os totais acima mas não as linhas do medidor. Os valores da fatura
+      continuam válidos; o que falta é o detalhamento por posto.
+    </p>
+  </section>
+  {% endif %}
+{% endblock %}

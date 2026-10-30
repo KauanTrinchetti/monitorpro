@@ -1,0 +1,142 @@
+{% extends "monitor/base.html" %}
+
+{% block title %}Acesso — MonitorPro{% endblock %}
+
+
+{% block body %}
+<div class="login-wrap">
+
+  <!-- ── Painel esquerdo ── -->
+  <div class="login-visual">
+    <div class="grid-lines"></div>
+
+    <div class="visual-brand">
+      {% comment %} A mesma marca da barra lateral: um registrador de cinco
+         casas, a ultima virada. {% endcomment %}
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 46 20" focusable="false">
+          <rect class="marca-casa" x="0.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="9.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="18.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-casa" x="27.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-virada" x="36.5" y="0.5" width="9" height="19"/>
+          <rect class="marca-digito" x="2.5" y="6" width="5" height="2"/>
+          <rect class="marca-digito" x="11.5" y="11" width="5" height="2"/>
+          <rect class="marca-digito" x="20.5" y="8" width="5" height="2"/>
+          <rect class="marca-digito" x="29.5" y="13" width="5" height="2"/>
+          <rect class="marca-virada-digito" x="38.5" y="4" width="5" height="2"/>
+        </svg>
+      </div>
+      <span class="brand-name">MonitorPro</span>
+    </div>
+
+    <div class="visual-features">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M2 9h20M7 4v5"/>
+          </svg>
+        </div>
+        <div class="feature-info">
+          <div class="feature-title">Leitura automática de faturas</div>
+          <div class="feature-desc">Faturas da CPFL capturadas pelo robô de e-mail, sem necessidade de inserção manual.</div>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+          </svg>
+        </div>
+        <div class="feature-info">
+          <div class="feature-title">Exportação e relatórios</div>
+          <div class="feature-desc">Histórico consolidado de gastos disponível para exportação em Excel com um clique.</div>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </div>
+        <div class="feature-info">
+          <div class="feature-title">Alertas por e-mail</div>
+          <div class="feature-desc">Notificações automáticas sobre faturas pendentes e vencimentos próximos.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="visual-footer">
+      Monitoramento automático de contas de energia elétrica.
+    </div>
+  </div>
+
+  <!-- ── Painel direito ── -->
+  <div class="login-form-panel">
+    <div class="login-box">
+      <h1 class="login-heading">Entrar no MonitorPro</h1>
+      <p class="login-sub">Acompanhe as faturas de energia das suas unidades.</p>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="POST" action="{% url 'login' %}" novalidate>
+        {% csrf_token %}
+
+        <div class="field">
+          <label for="id_username">Usuário / E-mail</label>
+          <input
+            type="text"
+            id="id_username"
+            name="username"
+            placeholder="seu@email.com.br"
+            autocomplete="username"
+            value="{{ form.username.value|default:'' }}"
+            class="{% if form.username.errors %}error{% endif %}"
+          >
+          {% if form.username.errors %}
+            <div class="field-error">{{ form.username.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label for="id_password">Senha</label>
+          <input
+            type="password"
+            id="id_password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            class="{% if form.password.errors %}error{% endif %}"
+          >
+          {% if form.password.errors %}
+            <div class="field-error">{{ form.password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="field-row">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember_me"> Manter conectado
+          </label>
+          <a href="{% url 'password_reset' %}" class="link-muted">Esqueci a senha</a>
+        </div>
+
+        <button type="submit" class="btn-primary">Entrar na conta</button>
+      </form>
+
+      <p class="login-divider">
+        Problema de acesso? Fale com o<br>administrador do sistema.
+      </p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
