@@ -31,7 +31,7 @@ reportlab==4.5.1
 
 # --- Transitivas ---
 cffi==2.0.0
-charset-normalizer==3.4.7
+charset-normalizer==3.5.2
 cryptography==50.0.2
 pycparser==3.0
 
