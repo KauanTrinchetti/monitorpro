@@ -6,7 +6,7 @@
 
 # --- Framework ---
 Django==6.0.9
-asgiref==3.11.1
+asgiref==3.13.0
 sqlparse==0.6.0
 tzdata==2026.2
 
