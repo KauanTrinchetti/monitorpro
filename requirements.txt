@@ -8,7 +8,7 @@
 Django==6.0.9
 asgiref==3.11.1
 sqlparse==0.6.0
-tzdata==2026.2
+tzdata==2026.6
 
 # --- Banco de dados ---
 psycopg2-binary==2.9.12
